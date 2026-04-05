@@ -71,6 +71,10 @@ export default function ProductDetail() {
   async function handleUndoLastMovement() {
     const lastMovement = movements[0]
     if (!lastMovement) return
+    if (lastMovement.invoice_id) {
+      alert('Цей рух створено через накладну. Скасуйте накладну в Журналі.')
+      return
+    }
     const today = new Date().toDateString()
     const movementDate = new Date(lastMovement.created_at).toDateString()
     if (today !== movementDate) {
@@ -255,11 +259,18 @@ export default function ProductDetail() {
                       <td className="px-4 py-3 text-sm text-gray-500 hidden md:table-cell">{m.note || '—'}</td>
                       <td className="px-4 py-3">
                         {index === 0 && canUndo(m) && (
-                          <button onClick={handleUndoLastMovement}
-                            className="text-xs text-red-500 border border-red-300 rounded px-2 py-0.5 hover:bg-red-50 transition-colors"
-                            title="Скасувати цю операцію">
-                            ↩️ скасувати
-                          </button>
+                          m.invoice_id ? (
+                            <span className="text-xs text-gray-400 border border-gray-200 rounded px-2 py-0.5"
+                              title="Скасуйте накладну в Журналі">
+                              🔒 накладна
+                            </span>
+                          ) : (
+                            <button onClick={handleUndoLastMovement}
+                              className="text-xs text-red-500 border border-red-300 rounded px-2 py-0.5 hover:bg-red-50 transition-colors"
+                              title="Скасувати цю операцію">
+                              ↩️ скасувати
+                            </button>
+                          )
                         )}
                       </td>
                     </tr>

@@ -7,19 +7,41 @@ export interface InvoiceItem {
   current_stock: number
 }
 
+export interface OrderDraft {
+  delivery_details: string
+  note: string
+  items: InvoiceItem[]
+}
+
 export function validateInvoice(
   type: 'IN' | 'OUT',
   items: InvoiceItem[],
-  subtype?: InvoiceSubtype | null
+  subtype?: InvoiceSubtype | null,
+  orders?: OrderDraft[]
 ): string | null {
+  if (type === 'OUT') {
+    if (!subtype) return 'Оберіть тип видачі'
+    if (!orders || orders.length === 0) return 'Додайте хоча б одне замовлення'
+    for (let i = 0; i < orders.length; i++) {
+      const order = orders[i]
+      if (order.items.length === 0) return `Замовлення ${i + 1}: додайте хоча б один товар`
+      for (const item of order.items) {
+        if (!item.quantity || item.quantity <= 0) {
+          return `Замовлення ${i + 1}, ${item.product_name}: кількість має бути більше 0`
+        }
+        if (item.quantity > item.current_stock) {
+          return `Замовлення ${i + 1}, ${item.product_name}: недостатньо товару (на складі: ${item.current_stock})`
+        }
+      }
+    }
+    return null
+  }
+
+  // IN validation
   if (items.length === 0) return 'Додайте хоча б один товар'
-  if (type === 'OUT' && !subtype) return 'Оберіть тип видачі'
   for (const item of items) {
     if (!item.quantity || item.quantity <= 0) {
       return `${item.product_name}: кількість має бути більше 0`
-    }
-    if (type === 'OUT' && item.quantity > item.current_stock) {
-      return `${item.product_name}: недостатньо товару (на складі: ${item.current_stock})`
     }
   }
   return null
@@ -29,6 +51,10 @@ const SUBTYPE_LABELS: Record<InvoiceSubtype, string> = {
   DNIPRO: '🚚 Дніпро',
   PICKUP: '🧍 Самовивіз',
   NOVA_POSHTA: '📮 Нова Пошта',
+}
+
+export function getSubtypeLabel(subtype: InvoiceSubtype): string {
+  return SUBTYPE_LABELS[subtype]
 }
 
 export function getInvoiceLabel(invoice: Pick<Invoice, 'type' | 'subtype' | 'counterparty' | 'invoice_number'>): string {

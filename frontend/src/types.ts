@@ -22,6 +22,7 @@ export interface StockMovement {
   counterparty: string | null
   invoice_number: string | null
   invoice_id: string | null
+  order_id: string | null
   note: string | null
   created_at: string
 }
@@ -34,6 +35,15 @@ export interface Invoice {
   subtype: InvoiceSubtype | null
   counterparty: string | null
   invoice_number: string | null
+  note: string | null
+  created_at: string
+}
+
+export interface Order {
+  id: string
+  invoice_id: string
+  subtype: InvoiceSubtype
+  delivery_details: string | null
   note: string | null
   created_at: string
 }

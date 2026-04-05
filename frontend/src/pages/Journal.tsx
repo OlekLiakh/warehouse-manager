@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import type { StockMovement } from '../types'
+import type { StockMovement, Invoice } from '../types'
 import { quantityDisplay } from '../utils/movement'
 import { groupByInvoice, isInitialStockMovement } from '../utils/journal'
 import type { InvoiceGroup } from '../utils/journal'
+import { canCancelInvoice, getInvoiceLabel } from '../utils/invoice'
 import { fetchPaginated } from '../utils/fetch-paginated'
 
 interface MovementWithProduct extends StockMovement {
@@ -32,6 +33,7 @@ export default function Journal() {
   const navigate = useNavigate()
   const [date, setDate] = useState(todayString())
   const [movements, setMovements] = useState<MovementWithProduct[]>([])
+  const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(true)
   const [typeFilter, setTypeFilter] = useState<'ALL' | 'IN' | 'OUT'>('ALL')
   const [groupedView, setGroupedView] = useState(false)
@@ -43,24 +45,35 @@ export default function Journal() {
     const start = new Date(`${date}T00:00:00`)
     const end = new Date(`${date}T23:59:59.999`)
 
-    const all = await fetchPaginated<MovementWithProduct>((from, to) =>
-      supabase
-        .from('stock_movements')
-        .select('*, products(id, name, articles, shelf_location)')
-        .gte('created_at', start.toISOString())
-        .lte('created_at', end.toISOString())
-        .order('created_at', { ascending: false })
-        .range(from, to)
-    )
+    const [movs, invs] = await Promise.all([
+      fetchPaginated<MovementWithProduct>((from, to) =>
+        supabase
+          .from('stock_movements')
+          .select('*, products(id, name, articles, shelf_location)')
+          .gte('created_at', start.toISOString())
+          .lte('created_at', end.toISOString())
+          .order('created_at', { ascending: false })
+          .range(from, to)
+      ),
+      fetchPaginated<Invoice>((from, to) =>
+        supabase
+          .from('invoices')
+          .select('*')
+          .gte('created_at', start.toISOString())
+          .lte('created_at', end.toISOString())
+          .order('created_at', { ascending: false })
+          .range(from, to)
+      ),
+    ])
 
-    setMovements(all)
+    setMovements(movs)
+    setInvoices(invs)
     setLoading(false)
   }
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchMovements() }, [date])
 
-  // Filter movements: type filter + hide initial stock
   const filtered = movements.filter(m => {
     if (typeFilter !== 'ALL' && m.type !== typeFilter) return false
     if (hideInitial && isInitialStockMovement(m)) return false
@@ -68,6 +81,9 @@ export default function Journal() {
   })
 
   const groups = groupByInvoice(filtered)
+
+  // Map invoice_id to Invoice for cancel button
+  const invoiceMap = new Map(invoices.map(inv => [inv.id, inv]))
 
   function toggleCollapse(label: string) {
     setCollapsed(prev => {
@@ -78,7 +94,6 @@ export default function Journal() {
     })
   }
 
-  // Auto-collapse initial stock groups
   useEffect(() => {
     const initialLabels = new Set<string>()
     const allGroups = groupByInvoice(movements.filter(m => typeFilter === 'ALL' || m.type === typeFilter))
@@ -86,11 +101,29 @@ export default function Journal() {
     setCollapsed(initialLabels)
   }, [movements, typeFilter])
 
+  async function handleCancelInvoice(invoiceId: string) {
+    const inv = invoiceMap.get(invoiceId)
+    if (!inv) return
+    const label = getInvoiceLabel(inv)
+    if (!confirm(`Скасувати накладну "${label}"?\nВсі рухи та замовлення будуть видалені, залишки повернуться.`)) return
+    const { error } = await supabase.from('invoices').delete().eq('id', invoiceId)
+    if (error) {
+      alert('Помилка скасування: ' + error.message)
+    } else {
+      fetchMovements()
+    }
+  }
+
   const filterButtons = [
     { key: 'ALL' as const, label: 'Всі' },
     { key: 'IN' as const, label: '📦 Прийом' },
     { key: 'OUT' as const, label: '📤 Видача' },
   ]
+
+  // Invoices section: show today's invoices with cancel buttons
+  const todayInvoices = invoices.filter(inv =>
+    (typeFilter === 'ALL' || inv.type === typeFilter)
+  )
 
   return (
     <div>
@@ -135,6 +168,26 @@ export default function Journal() {
           </label>
         </div>
       </div>
+
+      {/* Invoices with cancel buttons */}
+      {!loading && todayInvoices.length > 0 && (
+        <div className="mb-4 bg-white rounded-lg shadow-sm border border-gray-200 p-3">
+          <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Накладні за {date}</h3>
+          <div className="space-y-1">
+            {todayInvoices.map(inv => (
+              <div key={inv.id} className="flex items-center justify-between py-1.5 text-sm">
+                <span className="text-gray-700">{getInvoiceLabel(inv)}</span>
+                {canCancelInvoice(inv) && (
+                  <button onClick={() => handleCancelInvoice(inv.id)}
+                    className="text-xs text-red-500 border border-red-300 rounded px-2 py-0.5 hover:bg-red-50 transition-colors">
+                    ❌ Скасувати
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <p className="text-gray-400 py-8 text-center">Завантаження...</p>
