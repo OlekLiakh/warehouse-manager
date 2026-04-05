@@ -21,6 +21,19 @@ export interface StockMovement {
   quantity: number
   counterparty: string | null
   invoice_number: string | null
+  invoice_id: string | null
+  note: string | null
+  created_at: string
+}
+
+export type InvoiceSubtype = 'DNIPRO' | 'PICKUP' | 'NOVA_POSHTA'
+
+export interface Invoice {
+  id: string
+  type: 'IN' | 'OUT'
+  subtype: InvoiceSubtype | null
+  counterparty: string | null
+  invoice_number: string | null
   note: string | null
   created_at: string
 }

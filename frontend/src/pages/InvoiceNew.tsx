@@ -1,11 +1,17 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import type { Product } from '../types'
+import type { Product, InvoiceSubtype } from '../types'
 import type { InvoiceItem } from '../utils/invoice'
 import { validateInvoice } from '../utils/invoice'
 import { fetchPaginated } from '../utils/fetch-paginated'
 import ProductPicker from '../components/ProductPicker'
+
+const SUBTYPES: { key: InvoiceSubtype; label: string }[] = [
+  { key: 'DNIPRO', label: '🚚 Дніпро' },
+  { key: 'PICKUP', label: '🧍 Самовивіз' },
+  { key: 'NOVA_POSHTA', label: '📮 Нова Пошта' },
+]
 
 export default function InvoiceNew() {
   const navigate = useNavigate()
@@ -14,6 +20,7 @@ export default function InvoiceNew() {
 
   const [products, setProducts] = useState<Product[]>([])
   const [items, setItems] = useState<InvoiceItem[]>([])
+  const [subtype, setSubtype] = useState<InvoiceSubtype | null>(null)
   const [counterparty, setCounterparty] = useState('')
   const [invoiceNumber, setInvoiceNumber] = useState('')
   const [note, setNote] = useState('')
@@ -53,7 +60,7 @@ export default function InvoiceNew() {
   }
 
   async function handleSave() {
-    const validationError = validateInvoice(type, items)
+    const validationError = validateInvoice(type, items, subtype)
     if (validationError) {
       setError(validationError)
       return
@@ -62,19 +69,40 @@ export default function InvoiceNew() {
     setSaving(true)
     setError(null)
 
+    // 1. Create invoice record
+    const { data: invoice, error: invoiceError } = await supabase
+      .from('invoices')
+      .insert({
+        type,
+        subtype: type === 'OUT' ? subtype : null,
+        counterparty: counterparty.trim() || null,
+        invoice_number: invoiceNumber.trim() || null,
+        note: note.trim() || null,
+      })
+      .select('id')
+      .single()
+
+    if (invoiceError || !invoice) {
+      setError('Помилка створення накладної: ' + (invoiceError?.message ?? 'невідома помилка'))
+      setSaving(false)
+      return
+    }
+
+    // 2. Create stock movements linked to invoice
     const movements = items.map(item => ({
       product_id: item.product_id,
       type,
       quantity: item.quantity,
       counterparty: counterparty.trim() || null,
       invoice_number: invoiceNumber.trim() || null,
+      invoice_id: invoice.id,
       note: note.trim() || null,
     }))
 
-    const { error: dbError } = await supabase.from('stock_movements').insert(movements)
+    const { error: movError } = await supabase.from('stock_movements').insert(movements)
 
-    if (dbError) {
-      setError('Помилка збереження: ' + dbError.message)
+    if (movError) {
+      setError('Помилка збереження рухів: ' + movError.message)
       setSaving(false)
       return
     }
@@ -100,6 +128,25 @@ export default function InvoiceNew() {
       <div className="lg:flex lg:gap-6">
         {/* Main form */}
         <div className="flex-1 min-w-0">
+          {/* Subtype selection for OUT */}
+          {type === 'OUT' && (
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
+              <span className="text-sm font-medium text-gray-700 block mb-2">Тип видачі *</span>
+              <div className="flex gap-2">
+                {SUBTYPES.map(s => (
+                  <button key={s.key} onClick={() => setSubtype(s.key)}
+                    className={`flex-1 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                      subtype === s.key
+                        ? 'bg-orange-600 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}>
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Header fields */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
             <div className="grid gap-3 sm:grid-cols-2">
