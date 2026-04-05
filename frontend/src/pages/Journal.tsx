@@ -42,6 +42,7 @@ export default function Journal() {
     setLoading(false)
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchMovements() }, [date])
 
   const filtered = movements.filter(m => typeFilter === 'ALL' || m.type === typeFilter)

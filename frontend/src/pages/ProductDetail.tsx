@@ -35,6 +35,7 @@ export default function ProductDetail() {
     setLoading(false)
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchData() }, [id])
 
   async function handleSaveDetails() {

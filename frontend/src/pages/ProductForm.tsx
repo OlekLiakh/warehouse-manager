@@ -43,6 +43,7 @@ export default function ProductForm() {
     setLoading(false)
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (isEdit) fetchProduct() }, [id])
 
   async function handleSave() {
