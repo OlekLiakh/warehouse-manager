@@ -56,6 +56,9 @@ cd frontend && npm run build
 | current_stock | int4 | managed by triggers |
 | boss_quantity | int4 | nullable, reference from BOSS system |
 | is_active | boolean | DEFAULT true, soft delete |
+| description | text | nullable |
+| photo_urls | text[] | array of image URLs |
+| external_url | text | nullable, catalog/shop link |
 | notes | text | nullable |
 | created_at | timestamptz | auto |
 | updated_at | timestamptz | auto |
@@ -65,7 +68,7 @@ cd frontend && npm run build
 |--------|------|-------|
 | id | uuid | PK, auto-generated |
 | product_id | uuid | FK -> products.id |
-| type | text | 'IN', 'OUT', or 'MOVE' |
+| type | text | 'IN', 'OUT', 'MOVE', or 'ADJUST' |
 | quantity | int4 | |
 | counterparty | text | nullable |
 | invoice_number | text | nullable |
@@ -79,7 +82,13 @@ cd frontend && npm run build
 - UI language: Ukrainian (uk-UA)
 
 ## Environment Variables
-Frontend `.env.local` (never commit):
+Two Supabase projects: staging (dev) and production.
+
+- **Staging:** `frontend/.env.local` — local dev, never committed (gitignored via `*.local`)
+- **Production:** `frontend/.env.production` — prod keys, never committed (gitignored explicitly)
+- **Vercel:** prod env vars configured in Vercel dashboard, not in files
+
+Variables:
 - `VITE_SUPABASE_URL` — Supabase project URL
 - `VITE_SUPABASE_KEY` — Supabase publishable/anon key
 
