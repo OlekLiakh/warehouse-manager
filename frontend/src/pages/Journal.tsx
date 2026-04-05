@@ -18,8 +18,8 @@ function todayString(): string {
 }
 
 function groupHeaderColor(type: InvoiceGroup<MovementWithProduct>['type']) {
-  if (type === 'IN') return 'bg-green-600'
-  if (type === 'OUT') return 'bg-red-600'
+  if (type === 'IN') return 'bg-[#057a55]'
+  if (type === 'OUT') return 'bg-[#e02424]'
   return 'bg-gray-600'
 }
 
@@ -126,28 +126,28 @@ export default function Journal() {
   )
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">📓 Журнал рухів</h1>
+    <div className="overflow-x-hidden">
+      <div className="flex items-center justify-between mb-5">
+        <h1 className="text-2xl font-bold text-gray-900">📓 Журнал рухів</h1>
         <button onClick={() => navigate('/')}
-          className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors">
+          className="px-3 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors h-11">
           ← Склад
         </button>
       </div>
 
-      <div className="flex flex-wrap gap-3 items-center mb-5 bg-white rounded-lg shadow-sm border border-gray-200 p-3">
+      <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-stretch sm:items-center mb-5 bg-white rounded-xl shadow-sm border border-gray-200 p-3">
         <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
           📅 Дата:
           <input type="date" value={date} onChange={e => setDate(e.target.value)}
-            className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+            className="px-3 py-1.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1a56db] focus:border-[#1a56db]" />
         </label>
 
         <div className="flex gap-1">
           {filterButtons.map(t => (
             <button key={t.key} onClick={() => setTypeFilter(t.key)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-colors ${
                 typeFilter === t.key
-                  ? 'bg-gray-800 text-white'
+                  ? 'bg-[#1a56db] text-white'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}>
               {t.label}
@@ -155,15 +155,15 @@ export default function Journal() {
           ))}
         </div>
 
-        <div className="flex items-center gap-4 ml-auto">
+        <div className="flex items-center gap-4 sm:ml-auto">
           <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
             <input type="checkbox" checked={hideInitial} onChange={e => setHideInitial(e.target.checked)}
-              className="rounded border-gray-300" />
+              className="rounded border-gray-300 text-[#1a56db] focus:ring-[#1a56db]" />
             Приховати початкові залишки
           </label>
           <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
             <input type="checkbox" checked={groupedView} onChange={e => setGroupedView(e.target.checked)}
-              className="rounded border-gray-300" />
+              className="rounded border-gray-300 text-[#1a56db] focus:ring-[#1a56db]" />
             По замовленнях
           </label>
         </div>
@@ -171,7 +171,7 @@ export default function Journal() {
 
       {/* Invoices with cancel buttons */}
       {!loading && todayInvoices.length > 0 && (
-        <div className="mb-4 bg-white rounded-lg shadow-sm border border-gray-200 p-3">
+        <div className="mb-4 bg-white rounded-xl shadow-sm border border-gray-200 p-3">
           <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Накладні за {date}</h3>
           <div className="space-y-1">
             {todayInvoices.map(inv => (
@@ -179,7 +179,7 @@ export default function Journal() {
                 <span className="text-gray-700">{getInvoiceLabel(inv)}</span>
                 {canCancelInvoice(inv) && (
                   <button onClick={() => handleCancelInvoice(inv.id)}
-                    className="text-xs text-red-500 border border-red-300 rounded px-2 py-0.5 hover:bg-red-50 transition-colors">
+                    className="text-xs text-red-500 border border-red-300 rounded-lg px-2 py-0.5 hover:bg-red-50 transition-colors">
                     ❌ Скасувати
                   </button>
                 )}
@@ -196,10 +196,10 @@ export default function Journal() {
       ) : groupedView ? (
         <div className="space-y-3">
           {groups.map(g => (
-            <div key={g.label} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div key={g.label} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
               <button
                 onClick={() => toggleCollapse(g.label)}
-                className={`w-full flex items-center justify-between px-4 py-3 text-white text-left ${groupHeaderColor(g.type)}`}
+                className={`w-full flex items-center justify-between px-4 py-3 text-white text-left rounded-t-xl ${groupHeaderColor(g.type)}`}
               >
                 <div className="flex items-center gap-2 min-w-0">
                   <span>{groupIcon(g.type)}</span>
@@ -215,7 +215,7 @@ export default function Journal() {
                 <div className="divide-y divide-gray-100">
                   {g.movements.map(m => (
                     <div key={m.id} className="flex items-center gap-3 px-4 py-2 text-sm">
-                      <span className="cursor-pointer text-blue-600 hover:text-blue-800 transition-colors flex-1 min-w-0 truncate"
+                      <span className="cursor-pointer text-[#1a56db] hover:text-[#1648c0] transition-colors flex-1 min-w-0 truncate"
                         onClick={() => navigate(`/product/${m.product_id}`)}>
                         {m.products?.name ?? m.product_id}
                       </span>
@@ -229,15 +229,15 @@ export default function Journal() {
           ))}
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Час</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">Час</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Тип</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Товар</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">Артикул</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Кількість</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">К-сть</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">Контрагент</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">Накладна</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Нотатка</th>
@@ -246,16 +246,16 @@ export default function Journal() {
             <tbody className="divide-y divide-gray-100">
               {filtered.map(m => (
                 <tr key={m.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
+                  <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap hidden sm:table-cell">
                     {new Date(m.created_at).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}
                   </td>
                   <td className="px-4 py-3 text-sm font-medium whitespace-nowrap">
-                    <span className={m.type === 'IN' ? 'text-green-700' : m.type === 'OUT' ? 'text-red-700' : 'text-gray-500'}>
+                    <span className={m.type === 'IN' ? 'text-[#057a55]' : m.type === 'OUT' ? 'text-[#e02424]' : 'text-gray-500'}>
                       {m.type === 'IN' ? '📦 Прийом' : m.type === 'OUT' ? '📤 Видача' : m.type === 'ADJUST' ? '✏️ Уточнення' : '🔄 Переміщення'}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-sm">
-                    <span className="cursor-pointer text-blue-600 hover:text-blue-800 transition-colors"
+                    <span className="cursor-pointer text-[#1a56db] hover:text-[#1648c0] transition-colors"
                       onClick={() => navigate(`/product/${m.product_id}`)}>
                       {m.products?.name ?? m.product_id}
                     </span>

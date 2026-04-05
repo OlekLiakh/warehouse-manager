@@ -213,24 +213,24 @@ export default function InvoiceNew() {
   if (loading) return <p className="text-gray-400 py-8 text-center">Завантаження...</p>
 
   return (
-    <div>
+    <div className="overflow-x-hidden">
       <button onClick={() => navigate('/')}
         className="text-sm text-gray-500 hover:text-gray-700 mb-4 inline-block transition-colors">
         ← Склад
       </button>
 
-      <h1 className="text-2xl font-bold mb-5">{title}</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-5">{title}</h1>
 
       <div className="lg:flex lg:gap-6">
         <div className="flex-1 min-w-0">
           {/* Subtype selection for OUT */}
           {!isIn && (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-4">
               <span className="text-sm font-medium text-gray-700 block mb-2">Тип видачі *</span>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 {SUBTYPES.map(s => (
                   <button key={s.key} onClick={() => setSubtype(s.key)}
-                    className={`flex-1 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                    className={`flex-1 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
                       subtype === s.key
                         ? 'bg-orange-600 text-white'
                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -243,21 +243,21 @@ export default function InvoiceNew() {
           )}
 
           {/* Header fields */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-4">
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="block">
                 <span className="text-sm font-medium text-gray-700">Контрагент</span>
                 <input type="text" value={counterparty}
                   onChange={e => setCounterparty(e.target.value)}
                   placeholder="напр. ФОП Іванов"
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                  className="mt-1 block w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1a56db] focus:border-[#1a56db]" />
               </label>
               <label className="block">
                 <span className="text-sm font-medium text-gray-700">Номер накладної</span>
                 <input type="text" value={invoiceNumber}
                   onChange={e => setInvoiceNumber(e.target.value)}
                   placeholder="напр. ПН-00123"
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                  className="mt-1 block w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1a56db] focus:border-[#1a56db]" />
               </label>
             </div>
             <label className="block mt-3">
@@ -265,17 +265,17 @@ export default function InvoiceNew() {
               <input type="text" value={note}
                 onChange={e => setNote(e.target.value)}
                 placeholder="необов'язково"
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                className="mt-1 block w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1a56db] focus:border-[#1a56db]" />
             </label>
           </div>
 
           {/* IN: flat items list */}
           {isIn && (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-4">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-sm font-semibold text-gray-700">Товари ({items.length})</h2>
                 <button onClick={() => setPickerOpen(-1)}
-                  className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+                  className="px-3 py-1.5 bg-[#1a56db] text-white rounded-xl text-sm font-medium hover:bg-[#1648c0] transition-colors">
                   + Додати товар
                 </button>
               </div>
@@ -291,7 +291,7 @@ export default function InvoiceNew() {
                       </div>
                       <input type="number" min={1} value={item.quantity}
                         onChange={e => updateInQuantity(index, Number(e.target.value))}
-                        className="w-20 px-2 py-1.5 border border-gray-300 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                        className="w-20 px-2 py-1.5 border border-gray-200 rounded-xl text-sm text-center focus:outline-none focus:ring-2 focus:ring-[#1a56db] focus:border-[#1a56db]" />
                       <button onClick={() => removeInItem(index)}
                         className="text-red-400 hover:text-red-600 text-lg leading-none transition-colors">&times;</button>
                     </div>
@@ -305,12 +305,12 @@ export default function InvoiceNew() {
           {!isIn && (
             <div className="space-y-4 mb-4">
               {orders.map((order, orderIdx) => (
-                <div key={orderIdx} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                <div key={orderIdx} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                   <div className="flex items-center justify-between px-4 py-3 bg-orange-50 border-b border-orange-200">
                     <h3 className="text-sm font-semibold text-orange-800">Замовлення {orderIdx + 1}</h3>
                     {orders.length > 1 && (
                       <button onClick={() => removeOrder(orderIdx)}
-                        className="text-xs text-red-500 border border-red-300 rounded px-2 py-0.5 hover:bg-red-50 transition-colors">
+                        className="text-xs text-red-500 border border-red-300 rounded-lg px-2 py-0.5 hover:bg-red-50 transition-colors">
                         🗑️ Видалити
                       </button>
                     )}
@@ -322,13 +322,13 @@ export default function InvoiceNew() {
                         onChange={e => updateOrderField(orderIdx, 'delivery_details', e.target.value)}
                         placeholder="Адреса, ТТН, телефон..."
                         rows={2}
-                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                        className="mt-1 block w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1a56db] focus:border-[#1a56db]" />
                     </label>
 
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium text-gray-700">Товари ({order.items.length})</span>
                       <button onClick={() => setPickerOpen(orderIdx)}
-                        className="px-3 py-1 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 transition-colors">
+                        className="px-3 py-1 bg-[#1a56db] text-white rounded-xl text-xs font-medium hover:bg-[#1648c0] transition-colors">
                         + Додати товар
                       </button>
                     </div>
@@ -345,7 +345,7 @@ export default function InvoiceNew() {
                             </div>
                             <input type="number" min={1} max={item.current_stock} value={item.quantity}
                               onChange={e => updateOrderItem(orderIdx, itemIdx, Number(e.target.value))}
-                              className="w-20 px-2 py-1.5 border border-gray-300 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                              className="w-20 px-2 py-1.5 border border-gray-200 rounded-xl text-sm text-center focus:outline-none focus:ring-2 focus:ring-[#1a56db] focus:border-[#1a56db]" />
                             <button onClick={() => removeOrderItem(orderIdx, itemIdx)}
                               className="text-red-400 hover:text-red-600 text-lg leading-none transition-colors">&times;</button>
                           </div>
@@ -357,7 +357,7 @@ export default function InvoiceNew() {
               ))}
 
               <button onClick={addOrder}
-                className="w-full px-4 py-2.5 border-2 border-dashed border-gray-300 rounded-lg text-sm font-medium text-gray-500 hover:border-gray-400 hover:text-gray-600 transition-colors">
+                className="w-full px-4 py-2.5 border-2 border-dashed border-gray-300 rounded-xl text-sm font-medium text-gray-500 hover:border-gray-400 hover:text-gray-600 transition-colors">
                 + Додати замовлення
               </button>
             </div>
@@ -365,17 +365,17 @@ export default function InvoiceNew() {
 
           {/* Error */}
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">
+            <div className="bg-red-50 border border-red-200 text-[#e02424] px-4 py-3 rounded-xl text-sm mb-4">
               {error}
             </div>
           )}
 
           {/* Save */}
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
             <button onClick={handleSave} disabled={saving || totalPositions === 0}
-              className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 ${
+              className={`px-5 py-2.5 rounded-xl text-sm font-medium transition-colors disabled:opacity-50 h-11 ${
                 isIn
-                  ? 'bg-green-600 text-white hover:bg-green-700'
+                  ? 'bg-[#057a55] text-white hover:bg-[#046c4e]'
                   : 'bg-orange-600 text-white hover:bg-orange-700'
               }`}>
               {saving ? 'Збереження...' : `✅ Зберегти накладну (${totalPositions} поз., ${totalItems} шт.)`}
@@ -386,7 +386,7 @@ export default function InvoiceNew() {
         {/* Desktop picker panel */}
         {pickerOpen != null && (
           <div className="hidden lg:block w-80 shrink-0">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sticky top-4 max-h-[calc(100vh-2rem)]">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sticky top-4 max-h-[calc(100vh-2rem)]">
               <ProductPicker products={products} excludeIds={excludeIds} onPick={handlePick} onClose={() => setPickerOpen(null)} />
             </div>
           </div>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import type { Product } from '../types'
@@ -11,6 +11,9 @@ export default function Products() {
   const [search, setSearch] = useState('')
   const [showInactive, setShowInactive] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+  const [todayMovements, setTodayMovements] = useState(0)
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
   async function fetchProducts() {
     setLoading(true)
@@ -21,94 +24,187 @@ export default function Products() {
     setLoading(false)
   }
 
-  useEffect(() => { fetchProducts() }, [])
+  async function fetchTodayMovements() {
+    const d = new Date()
+    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    const start = `${today}T00:00:00`
+    const end = `${today}T23:59:59.999`
+    const { count } = await supabase
+      .from('stock_movements')
+      .select('*', { count: 'exact', head: true })
+      .gte('created_at', new Date(start).toISOString())
+      .lte('created_at', new Date(end).toISOString())
+    setTodayMovements(count ?? 0)
+  }
 
+  useEffect(() => { fetchProducts(); fetchTodayMovements() }, [])
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  const activeProducts = products.filter(p => p.is_active)
   const filtered = filterProducts(products, search).filter(p => showInactive || p.is_active)
+  const zeroStock = activeProducts.filter(p => p.current_stock === 0).length
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">🏪 Склад</h1>
-        <div className="flex gap-2">
+    <div className="overflow-x-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center gap-3">
+          <span className="text-3xl">🏪</span>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Склад</h1>
+        </div>
+        <div className="flex items-center gap-2">
           <button onClick={() => navigate('/journal')}
-            className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors">
+            className="px-3 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors h-11">
             📓 Журнал
           </button>
-          <button onClick={() => navigate('/product/new')}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
-            + Додати товар
-          </button>
+          <div ref={dropdownRef} className="relative">
+            <button onClick={() => setDropdownOpen(!dropdownOpen)}
+              className="px-4 py-2.5 bg-[#1a56db] text-white rounded-xl text-sm font-medium hover:bg-[#1648c0] transition-colors h-11">
+              + Накладна ▾
+            </button>
+            {dropdownOpen && (
+              <div className="absolute right-0 mt-1 w-48 bg-white rounded-xl shadow-lg border border-gray-200 py-1 z-20">
+                <button onClick={() => { navigate('/invoice/new?type=IN'); setDropdownOpen(false) }}
+                  className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                  📦 Прихідна
+                </button>
+                <button onClick={() => { navigate('/invoice/new?type=OUT'); setDropdownOpen(false) }}
+                  className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                  📤 Видаткова
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="flex gap-2 mb-4">
-        <button onClick={() => navigate('/invoice/new?type=IN')}
-          className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors">
-          📦 Новий прихід
-        </button>
-        <button onClick={() => navigate('/invoice/new?type=OUT')}
-          className="flex-1 px-4 py-2.5 bg-orange-600 text-white rounded-lg text-sm font-medium hover:bg-orange-700 transition-colors">
-          📤 Нова видача
-        </button>
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-3 mb-5">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 px-4 py-3 text-center">
+          <div className="text-2xl font-bold text-gray-900">{activeProducts.length}</div>
+          <div className="text-xs text-gray-500 mt-0.5">Товарів</div>
+        </div>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 px-4 py-3 text-center">
+          <div className="text-2xl font-bold text-[#e02424]">{zeroStock}</div>
+          <div className="text-xs text-gray-500 mt-0.5">Нульових</div>
+        </div>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 px-4 py-3 text-center">
+          <div className="text-2xl font-bold text-[#1a56db]">{todayMovements}</div>
+          <div className="text-xs text-gray-500 mt-0.5">Рухів сьогодні</div>
+        </div>
       </div>
 
+      {/* Search */}
       <div className="relative mb-3">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
+        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
         <input
           type="text"
-          placeholder="Пошук по назві, артикулу, полиці, нотатках..."
+          placeholder="Пошук по назві, артикулу, полиці..."
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1a56db] focus:border-[#1a56db] transition-colors"
         />
       </div>
 
-      <label className="inline-flex items-center gap-2 mb-4 text-sm text-gray-500 cursor-pointer select-none">
-        <input type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)}
-          className="rounded border-gray-300" />
-        Показати неактивні
-      </label>
+      <div className="flex items-center justify-between mb-4">
+        <label className="inline-flex items-center gap-2 text-sm text-gray-500 cursor-pointer select-none">
+          <input type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)}
+            className="rounded border-gray-300 text-[#1a56db] focus:ring-[#1a56db]" />
+          Показати неактивні
+        </label>
+        <button onClick={() => navigate('/product/new')}
+          className="text-sm text-[#1a56db] hover:text-[#1648c0] font-medium transition-colors">
+          + Додати товар
+        </button>
+      </div>
 
       {loading ? (
         <p className="text-gray-400 py-8 text-center">Завантаження...</p>
       ) : filtered.length === 0 ? (
         <p className="text-gray-400 py-8 text-center">Нічого не знайдено</p>
       ) : (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Назва</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">Артикул</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">Полиця</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Залишок</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filtered.map(p => (
-                <tr
-                  key={p.id}
-                  onClick={() => navigate(`/product/${p.id}`)}
-                  className="hover:bg-gray-50 cursor-pointer transition-colors"
-                >
-                  <td className="px-4 py-3">
-                    <span className="font-medium text-gray-900">{p.name}</span>
-                    {!p.is_active && <span className="ml-2 text-xs text-red-600 bg-red-50 px-1.5 py-0.5 rounded">[неактивний]</span>}
-                    {p.notes && <span className="ml-2 text-xs text-gray-400">({p.notes})</span>}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-500 hidden sm:table-cell">{p.articles.join(', ') || '—'}</td>
-                  <td className="px-4 py-3 text-sm text-gray-500 hidden md:table-cell">{p.shelf_location || '—'}</td>
-                  <td className="px-4 py-3">
-                    {p.current_stock === 0
-                      ? <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700">0</span>
-                      : <span className="font-bold text-gray-900">{p.current_stock}</span>
-                    }
-                  </td>
+        <>
+          {/* Desktop table */}
+          <div className="hidden md:block bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200">
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Артикул</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Назва</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Полиця</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Залишок</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filtered.map(p => (
+                  <tr
+                    key={p.id}
+                    onClick={() => navigate(`/product/${p.id}`)}
+                    className="hover:bg-gray-50 cursor-pointer transition-colors"
+                  >
+                    <td className="px-4 py-3 font-mono text-sm text-gray-600">{p.articles.join(', ') || '—'}</td>
+                    <td className="px-4 py-3">
+                      <span className="font-medium text-gray-900">{p.name}</span>
+                      {!p.is_active && <span className="ml-2 text-xs text-red-600 bg-red-50 px-1.5 py-0.5 rounded">[неактивний]</span>}
+                      {p.notes && <span className="ml-2 text-xs text-gray-400">({p.notes})</span>}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-500">{p.shelf_location || '—'}</td>
+                    <td className="px-4 py-3">
+                      {p.current_stock === 0
+                        ? <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700">0</span>
+                        : <span className="font-medium text-gray-900">{p.current_stock}</span>
+                      }
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile cards */}
+          <div className="md:hidden space-y-2">
+            {filtered.map(p => (
+              <div
+                key={p.id}
+                onClick={() => navigate(`/product/${p.id}`)}
+                className="bg-white rounded-xl shadow-sm border border-gray-200 px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors active:bg-gray-100"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    {p.articles.length > 0 && (
+                      <div className="font-mono text-xs text-gray-500 mb-0.5">{p.articles.join(', ')}</div>
+                    )}
+                    <div className="font-medium text-gray-900 text-sm leading-snug">
+                      {p.name}
+                      {!p.is_active && <span className="ml-1.5 text-xs text-red-600 bg-red-50 px-1 py-0.5 rounded">[неактивний]</span>}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {p.shelf_location && (
+                      <span className="text-xs text-gray-400">{p.shelf_location}</span>
+                    )}
+                    {p.current_stock === 0
+                      ? <span className="inline-flex items-center justify-center min-w-[2rem] px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700">0</span>
+                      : <span className="inline-flex items-center justify-center min-w-[2rem] px-2 py-0.5 rounded-full text-xs font-bold bg-gray-100 text-gray-900">{p.current_stock}</span>
+                    }
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       <p className="text-sm text-gray-400 mt-3">Показано: {filtered.length} з {products.length}</p>

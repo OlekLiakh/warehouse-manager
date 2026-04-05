@@ -3,6 +3,7 @@
 @layer base {
   body {
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    overflow-x: hidden;
     @apply bg-gray-50 text-gray-900 antialiased;
   }
 }
