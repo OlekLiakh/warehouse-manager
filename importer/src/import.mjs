@@ -47,6 +47,28 @@ export function filterNewProducts(products, existingKeys) {
 }
 
 /**
+ * Deduplicate products within the same array (same CSV file).
+ * Keeps the first occurrence, skips subsequent ones with same name+articles.
+ * @param {Array} products
+ * @returns {{ unique: Array, internalDupes: Array }}
+ */
+export function deduplicateProducts(products) {
+  const seen = new Set()
+  const unique = []
+  const internalDupes = []
+  for (const p of products) {
+    const key = makeProductKey(p.name, p.articles)
+    if (seen.has(key)) {
+      internalDupes.push(p)
+    } else {
+      seen.add(key)
+      unique.push(p)
+    }
+  }
+  return { unique, internalDupes }
+}
+
+/**
  * Fetch all existing product keys from Supabase (paginated).
  */
 async function fetchExistingProductKeys(supabase) {
@@ -116,14 +138,25 @@ export async function importCSV(filePath, { dryRun = false } = {}) {
   const supabase = getSupabase()
   console.log('🔍 Перевірка дублікатів в БД...')
   const existingKeys = await fetchExistingProductKeys(supabase)
-  const { newProducts, duplicates } = filterNewProducts(products, existingKeys)
+  const { newProducts: fromDB, duplicates: dbDupes } = filterNewProducts(products, existingKeys)
 
-  if (duplicates.length > 0) {
-    console.log(`⏭️  Пропущено дублікатів: ${duplicates.length}`)
-    duplicates.slice(0, 10).forEach(d =>
+  // Step 3b: Deduplicate within the CSV itself
+  const { unique: newProducts, internalDupes } = deduplicateProducts(fromDB)
+  const duplicates = [...dbDupes, ...internalDupes]
+
+  if (dbDupes.length > 0) {
+    console.log(`⏭️  Пропущено (вже в БД): ${dbDupes.length}`)
+    dbDupes.slice(0, 10).forEach(d =>
       console.log(`   - ${d.name} [${d.articles.join(', ') || 'без артикулу'}]`)
     )
-    if (duplicates.length > 10) console.log(`   ... і ще ${duplicates.length - 10}`)
+    if (dbDupes.length > 10) console.log(`   ... і ще ${dbDupes.length - 10}`)
+  }
+
+  if (internalDupes.length > 0) {
+    console.log(`⏭️  Пропущено (дублікати в CSV): ${internalDupes.length}`)
+    internalDupes.forEach(d =>
+      console.log(`   - ${d.name} [${d.articles.join(', ') || 'без артикулу'}]`)
+    )
   }
 
   if (newProducts.length === 0) {

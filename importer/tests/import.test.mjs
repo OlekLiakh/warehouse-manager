@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { makeProductKey, filterNewProducts } from '../src/import.mjs'
+import { makeProductKey, filterNewProducts, deduplicateProducts } from '../src/import.mjs'
 
 describe('makeProductKey', () => {
   it('створює ключ з name + articles', () => {
@@ -85,5 +85,42 @@ describe('filterNewProducts', () => {
 
     assert.equal(duplicates.length, 1)
     assert.equal(newProducts.length, 0)
+  })
+})
+
+describe('deduplicateProducts', () => {
+  it('два товари з однаковим name+articles → залишається один', () => {
+    const products = [
+      { name: 'Уплотнитель БУ', articles: ['1459233-00-D БУ'], current_stock: 2 },
+      { name: 'Інший товар', articles: ['ART-X'], current_stock: 5 },
+      { name: 'Уплотнитель БУ', articles: ['1459233-00-D БУ'], current_stock: 0 },
+    ]
+    const { unique, internalDupes } = deduplicateProducts(products)
+
+    assert.equal(unique.length, 2)
+    assert.equal(internalDupes.length, 1)
+    assert.equal(unique[0].name, 'Уплотнитель БУ')
+    assert.equal(unique[0].current_stock, 2) // перший залишається
+    assert.equal(internalDupes[0].current_stock, 0) // другий пропущено
+  })
+
+  it('без дублікатів — все залишається', () => {
+    const products = [
+      { name: 'Товар 1', articles: ['A'] },
+      { name: 'Товар 2', articles: ['B'] },
+    ]
+    const { unique, internalDupes } = deduplicateProducts(products)
+    assert.equal(unique.length, 2)
+    assert.equal(internalDupes.length, 0)
+  })
+
+  it('однакова назва різні артикули — обидва залишаються', () => {
+    const products = [
+      { name: 'Патрубок БУ', articles: ['1585719-00-В БУ'] },
+      { name: 'Патрубок БУ', articles: ['1472610-00-С БУ'] },
+    ]
+    const { unique, internalDupes } = deduplicateProducts(products)
+    assert.equal(unique.length, 2)
+    assert.equal(internalDupes.length, 0)
   })
 })
