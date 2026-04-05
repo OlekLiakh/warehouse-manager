@@ -1,0 +1,19 @@
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import Products from './pages/Products'
+import ProductDetail from './pages/ProductDetail'
+import ProductForm from './pages/ProductForm'
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <div style={{ maxWidth: 900, margin: '0 auto', padding: '16px' }}>
+        <Routes>
+          <Route path="/" element={<Products />} />
+          <Route path="/product/new" element={<ProductForm />} />
+          <Route path="/product/:id" element={<ProductDetail />} />
+          <Route path="/product/:id/edit" element={<ProductForm />} />
+        </Routes>
+      </div>
+    </BrowserRouter>
+  )
+}
