@@ -1,5 +1,19 @@
 import type { StockMovement } from '../types'
 
+export function validateMovement(
+  type: 'IN' | 'OUT' | 'MOVE' | 'ADJUST',
+  quantity: number,
+  currentStock: number
+): string | null {
+  if (type === 'ADJUST' && quantity === 0) return null
+  if (!quantity || quantity <= 0) return 'Кількість має бути більше 0'
+  if (type === 'OUT' && quantity > currentStock)
+    return `Недостатньо товару. На складі: ${currentStock} шт`
+  if (type === 'ADJUST' && quantity < 0)
+    return 'Кількість після уточнення не може бути від\'ємним'
+  return null
+}
+
 export function quantityDisplay(m: StockMovement): string {
   if (m.type === 'ADJUST') return `=${m.quantity}`
   if (m.type === 'OUT') return `−${m.quantity}`

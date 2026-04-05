@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { quantityDisplay, typeColor, typeLabel } from './movement'
+import { quantityDisplay, typeColor, typeLabel, validateMovement } from './movement'
 import type { StockMovement } from '../types'
 
 const base: StockMovement = {
@@ -46,6 +46,42 @@ describe('typeColor', () => {
 
   it('MOVE is dark grey', () => {
     expect(typeColor('MOVE')).toBe('#555')
+  })
+})
+
+describe('validateMovement', () => {
+  it('returns null when everything is OK', () => {
+    expect(validateMovement('IN', 5, 10)).toBeNull()
+    expect(validateMovement('OUT', 5, 10)).toBeNull()
+    expect(validateMovement('ADJUST', 3, 10)).toBeNull()
+  })
+
+  it('OUT > stock returns error', () => {
+    expect(validateMovement('OUT', 15, 10)).toContain('Недостатньо')
+  })
+
+  it('OUT === stock is OK (can give away all)', () => {
+    expect(validateMovement('OUT', 10, 10)).toBeNull()
+  })
+
+  it('quantity = 0 returns error', () => {
+    expect(validateMovement('IN', 0, 10)).not.toBeNull()
+  })
+
+  it('negative quantity returns error', () => {
+    expect(validateMovement('IN', -1, 10)).not.toBeNull()
+  })
+
+  it('ADJUST negative returns error', () => {
+    expect(validateMovement('ADJUST', -1, 10)).not.toBeNull()
+  })
+
+  it('ADJUST = 0 is OK (can zero out stock)', () => {
+    expect(validateMovement('ADJUST', 0, 10)).toBeNull()
+  })
+
+  it('IN is not limited by current stock', () => {
+    expect(validateMovement('IN', 9999, 0)).toBeNull()
   })
 })
 

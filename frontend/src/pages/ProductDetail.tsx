@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import type { Product, StockMovement, MovementForm } from '../types'
-import { quantityDisplay, typeColor, typeLabel } from '../utils/movement'
+import { quantityDisplay, typeColor, typeLabel, validateMovement } from '../utils/movement'
 
 export default function ProductDetail() {
   const { id } = useParams<{ id: string }>()
@@ -40,8 +40,10 @@ export default function ProductDetail() {
   }
 
   async function handleMovement() {
-    if (!showForm || form.quantity == null || !id) return
+    if (!showForm || form.quantity == null || !id || !product) return
     if (showForm === 'ADJUST' && !form.note?.trim()) return alert('Вкажіть причину уточнення')
+    const validationError = validateMovement(showForm, form.quantity, product.current_stock)
+    if (validationError) { alert(validationError); return }
     setSaving(true)
     const { error } = await supabase.from('stock_movements').insert({
       product_id: id,
