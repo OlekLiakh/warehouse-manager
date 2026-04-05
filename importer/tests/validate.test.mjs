@@ -140,10 +140,25 @@ describe('validateCSV', () => {
     }
   })
 
-  it('дублікати назв → попередження', () => {
+  it('однакова назва але різні артикули — НЕ дублікат', () => {
     const csv = [
       'Товар 1,ART-1,A-1,5,5,5,3',
       'Товар 1,ART-2,A-2,5,5,5,5',
+    ].join('\n')
+    const { filePath, cleanup } = createTempCSV(csv)
+    try {
+      const result = validateCSV(filePath)
+      assert.equal(result.valid, true)
+      assert.ok(!result.warnings.some(w => w.includes('дублікат')))
+    } finally {
+      cleanup()
+    }
+  })
+
+  it('однакова назва І артикул → дублікат', () => {
+    const csv = [
+      'Товар 1,ART-1,A-1,5,5,5,3',
+      'Товар 1,ART-1,A-2,5,5,5,5',
     ].join('\n')
     const { filePath, cleanup } = createTempCSV(csv)
     try {

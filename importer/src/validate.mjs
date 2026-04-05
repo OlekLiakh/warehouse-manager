@@ -66,7 +66,7 @@ export function validateCSV(filePath) {
 
   const errors = []
   const warnings = []
-  const names = new Map()
+  const dupeKeys = new Map()
   let productCount = 0
 
   // Check minimum columns
@@ -110,11 +110,12 @@ export function validateCSV(filePath) {
       warnings.push(stockResult.warning)
     }
 
-    // Check for duplicate names
-    if (names.has(name)) {
-      warnings.push(`Рядок ${rowNum}: дублікат назви "${name}" (перший раз: рядок ${names.get(name)})`)
+    // Check for real duplicates (same name + same articles)
+    const dupeKey = `${name}|${[...articles].sort().join(',')}`
+    if (dupeKeys.has(dupeKey)) {
+      warnings.push(`Рядок ${rowNum}: дублікат (name+articles) "${name}" [${articles.join(', ') || 'без артикулу'}] (перший раз: рядок ${dupeKeys.get(dupeKey)})`)
     } else {
-      names.set(name, rowNum)
+      dupeKeys.set(dupeKey, rowNum)
     }
   }
 
