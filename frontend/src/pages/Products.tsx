@@ -41,6 +41,17 @@ export default function Products() {
         </div>
       </div>
 
+      <div className="flex gap-2 mb-4">
+        <button onClick={() => navigate('/invoice/new?type=IN')}
+          className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors">
+          📦 Новий прихід
+        </button>
+        <button onClick={() => navigate('/invoice/new?type=OUT')}
+          className="flex-1 px-4 py-2.5 bg-orange-600 text-white rounded-lg text-sm font-medium hover:bg-orange-700 transition-colors">
+          📤 Нова видача
+        </button>
+      </div>
+
       <div className="relative mb-3">
         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
         <input
