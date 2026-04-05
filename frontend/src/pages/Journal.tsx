@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import type { StockMovement } from '../types'
 import { quantityDisplay } from '../utils/movement'
-import { groupByInvoice } from '../utils/journal'
+import { groupByInvoice, isInitialStockMovement } from '../utils/journal'
 import type { InvoiceGroup } from '../utils/journal'
 import { fetchPaginated } from '../utils/fetch-paginated'
 
@@ -36,7 +36,7 @@ export default function Journal() {
   const [typeFilter, setTypeFilter] = useState<'ALL' | 'IN' | 'OUT'>('ALL')
   const [groupedView, setGroupedView] = useState(false)
   const [hideInitial, setHideInitial] = useState(true)
-  const [collapsed, setCollapsed] = useState<Set<number>>(new Set())
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
 
   async function fetchMovements() {
     setLoading(true)
@@ -60,25 +60,31 @@ export default function Journal() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchMovements() }, [date])
 
-  const filtered = movements.filter(m => typeFilter === 'ALL' || m.type === typeFilter)
-  const groups = groupByInvoice(filtered)
-  const visibleGroups = hideInitial ? groups.filter(g => !g.isInitialStock) : groups
+  // Filter movements: type filter + hide initial stock
+  const filtered = movements.filter(m => {
+    if (typeFilter !== 'ALL' && m.type !== typeFilter) return false
+    if (hideInitial && isInitialStockMovement(m)) return false
+    return true
+  })
 
-  function toggleCollapse(index: number) {
+  const groups = groupByInvoice(filtered)
+
+  function toggleCollapse(label: string) {
     setCollapsed(prev => {
       const next = new Set(prev)
-      if (next.has(index)) next.delete(index)
-      else next.add(index)
+      if (next.has(label)) next.delete(label)
+      else next.add(label)
       return next
     })
   }
 
   // Auto-collapse initial stock groups
   useEffect(() => {
-    const initialIndices = new Set<number>()
-    groups.forEach((g, i) => { if (g.isInitialStock) initialIndices.add(i) })
-    setCollapsed(initialIndices)
-  }, [movements, typeFilter]) // eslint-disable-line react-hooks/exhaustive-deps
+    const initialLabels = new Set<string>()
+    const allGroups = groupByInvoice(movements.filter(m => typeFilter === 'ALL' || m.type === typeFilter))
+    allGroups.forEach(g => { if (g.isInitialStock) initialLabels.add(g.label) })
+    setCollapsed(initialLabels)
+  }, [movements, typeFilter])
 
   const filterButtons = [
     { key: 'ALL' as const, label: 'Всі' },
@@ -136,10 +142,10 @@ export default function Journal() {
         <p className="text-gray-400 py-8 text-center">Рухів за {date} не знайдено</p>
       ) : groupedView ? (
         <div className="space-y-3">
-          {visibleGroups.map((g, i) => (
-            <div key={i} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          {groups.map(g => (
+            <div key={g.label} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
               <button
-                onClick={() => toggleCollapse(i)}
+                onClick={() => toggleCollapse(g.label)}
                 className={`w-full flex items-center justify-between px-4 py-3 text-white text-left ${groupHeaderColor(g.type)}`}
               >
                 <div className="flex items-center gap-2 min-w-0">
@@ -148,11 +154,11 @@ export default function Journal() {
                 </div>
                 <div className="flex items-center gap-2 shrink-0 ml-2">
                   <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">{g.movements.length} поз.</span>
-                  <span className="text-sm">{collapsed.has(i) ? '▸' : '▾'}</span>
+                  <span className="text-sm">{collapsed.has(g.label) ? '▸' : '▾'}</span>
                 </div>
               </button>
 
-              {!collapsed.has(i) && (
+              {!collapsed.has(g.label) && (
                 <div className="divide-y divide-gray-100">
                   {g.movements.map(m => (
                     <div key={m.id} className="flex items-center gap-3 px-4 py-2 text-sm">
@@ -185,7 +191,7 @@ export default function Journal() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {(hideInitial ? filtered.filter(m => m.note !== 'Імпорт з CSV') : filtered).map(m => (
+              {filtered.map(m => (
                 <tr key={m.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
                     {new Date(m.created_at).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}

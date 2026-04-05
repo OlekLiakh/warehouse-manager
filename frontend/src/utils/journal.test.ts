@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { filterByDate, groupByInvoice } from './journal'
+import { filterByDate, groupByInvoice, isInitialStockMovement } from './journal'
 import type { StockMovement } from '../types'
 
 const base: StockMovement = {
@@ -104,5 +104,44 @@ describe('groupByInvoice', () => {
     const groups = groupByInvoice(movements)
     expect(groups[0].isInitialStock).toBe(false)
     expect(groups[0].label).toBe('Someone')
+  })
+})
+
+describe('isInitialStockMovement', () => {
+  it('returns true for IN with note "Імпорт з CSV" and no counterparty/invoice', () => {
+    expect(isInitialStockMovement({ ...base, type: 'IN', note: 'Імпорт з CSV', invoice_number: null, counterparty: null })).toBe(true)
+  })
+
+  it('returns false for OUT with note "Імпорт з CSV"', () => {
+    expect(isInitialStockMovement({ ...base, type: 'OUT', note: 'Імпорт з CSV', invoice_number: null, counterparty: null })).toBe(false)
+  })
+
+  it('returns false for IN with different note', () => {
+    expect(isInitialStockMovement({ ...base, type: 'IN', note: 'Ручне додавання', invoice_number: null, counterparty: null })).toBe(false)
+  })
+
+  it('returns false for IN with counterparty even if note matches', () => {
+    expect(isInitialStockMovement({ ...base, type: 'IN', note: 'Імпорт з CSV', invoice_number: null, counterparty: 'Someone' })).toBe(false)
+  })
+
+  it('filters initial stock when used with Array.filter', () => {
+    const movements = [
+      { ...base, id: '1', type: 'IN' as const, note: 'Імпорт з CSV', invoice_number: null, counterparty: null },
+      { ...base, id: '2', type: 'IN' as const, note: null, invoice_number: 'PN-001', counterparty: 'A' },
+      { ...base, id: '3', type: 'OUT' as const, note: null, invoice_number: null, counterparty: null },
+    ]
+    const visible = movements.filter(m => !isInitialStockMovement(m))
+    expect(visible).toHaveLength(2)
+    expect(visible.map(m => m.id)).toEqual(['2', '3'])
+  })
+
+  it('shows all movements when filter is off', () => {
+    const movements = [
+      { ...base, id: '1', type: 'IN' as const, note: 'Імпорт з CSV', invoice_number: null, counterparty: null },
+      { ...base, id: '2', type: 'OUT' as const, note: null, invoice_number: null, counterparty: null },
+    ]
+    const hideInitial = false
+    const visible = hideInitial ? movements.filter(m => !isInitialStockMovement(m)) : movements
+    expect(visible).toHaveLength(2)
   })
 })

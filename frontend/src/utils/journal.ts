@@ -17,6 +17,10 @@ export interface InvoiceGroup<T> {
   movements: T[]
 }
 
+export function isInitialStockMovement(m: { type: string; invoice_number: string | null; counterparty: string | null; note: string | null }): boolean {
+  return m.type === 'IN' && !m.invoice_number && !m.counterparty && m.note === 'Імпорт з CSV'
+}
+
 export function groupByInvoice<T extends {
   type: string
   invoice_number: string | null
