@@ -66,6 +66,8 @@ export async function importCSV(filePath, { dryRun = false } = {}) {
   const errors = []
 
   for (const product of products) {
+    // Insert with current_stock: 0 — the DB trigger will update it
+    // when we insert the stock_movement below
     const { data, error } = await supabase
       .from('products')
       .insert({
@@ -73,7 +75,7 @@ export async function importCSV(filePath, { dryRun = false } = {}) {
         articles: product.articles,
         shelf_location: product.shelf_location,
         boss_quantity: product.boss_quantity,
-        current_stock: product.current_stock,
+        current_stock: 0,
         is_active: true,
       })
       .select('id')
