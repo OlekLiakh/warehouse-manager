@@ -14,14 +14,18 @@ export function cleanArticle(raw) {
     .filter(Boolean)
 }
 
+/** Known header values in column 0 that indicate a non-data row */
+const HEADER_NAMES = new Set(['Наименование', 'наименование'])
+
 /**
- * Check if a row should be skipped (summary rows, empty names, etc.)
+ * Check if a row should be skipped (headers, summary rows, empty names, etc.)
  */
 export function shouldSkipRow(row) {
   const name = row[0]?.toString().trim()
   if (!name) return true
   if (name === '1014') return true
   if (/^\d+$/.test(name)) return true
+  if (HEADER_NAMES.has(name)) return true
   return false
 }
 
