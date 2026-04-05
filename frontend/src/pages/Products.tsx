@@ -28,7 +28,10 @@ export default function Products() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <h1 style={{ margin: 0 }}>🏪 Склад</h1>
-        <button onClick={() => navigate('/product/new')}>+ Додати товар</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={() => navigate('/journal')}>📓 Журнал</button>
+          <button onClick={() => navigate('/product/new')}>+ Додати товар</button>
+        </div>
       </div>
 
       <input

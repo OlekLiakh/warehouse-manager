@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Products from './pages/Products'
 import ProductDetail from './pages/ProductDetail'
 import ProductForm from './pages/ProductForm'
+import Journal from './pages/Journal'
 
 export default function App() {
   return (
@@ -12,6 +13,7 @@ export default function App() {
           <Route path="/product/new" element={<ProductForm />} />
           <Route path="/product/:id" element={<ProductDetail />} />
           <Route path="/product/:id/edit" element={<ProductForm />} />
+          <Route path="/journal" element={<Journal />} />
         </Routes>
       </div>
     </BrowserRouter>
