@@ -9,6 +9,7 @@ const base: StockMovement = {
   quantity: 5,
   counterparty: null,
   invoice_number: null,
+  invoice_id: null,
   note: null,
   created_at: '2026-04-05T10:00:00Z',
 }
