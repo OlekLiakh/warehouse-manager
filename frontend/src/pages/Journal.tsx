@@ -46,7 +46,7 @@ export default function Journal() {
     const all = await fetchPaginated<MovementWithProduct>((from, to) =>
       supabase
         .from('stock_movements')
-        .select('*, products(name, articles)')
+        .select('*, products(id, name, articles, shelf_location)')
         .gte('created_at', start.toISOString())
         .lte('created_at', end.toISOString())
         .order('created_at', { ascending: false })
@@ -160,6 +160,7 @@ export default function Journal() {
                         onClick={() => navigate(`/product/${m.product_id}`)}>
                         {m.products?.name ?? m.product_id}
                       </span>
+                      <span className="text-gray-400 text-xs hidden sm:block truncate max-w-40">{m.products?.articles?.length ? m.products.articles.join(', ') : '—'}</span>
                       <span className="font-bold whitespace-nowrap">{quantityDisplay(m)}</span>
                     </div>
                   ))}
@@ -176,6 +177,7 @@ export default function Journal() {
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Час</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Тип</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Товар</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">Артикул</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Кількість</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">Контрагент</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">Накладна</th>
@@ -199,6 +201,7 @@ export default function Journal() {
                       {m.products?.name ?? m.product_id}
                     </span>
                   </td>
+                  <td className="px-4 py-3 text-sm text-gray-500 hidden sm:table-cell">{m.products?.articles?.length ? m.products.articles.join(', ') : '—'}</td>
                   <td className="px-4 py-3 text-sm font-bold">{quantityDisplay(m)}</td>
                   <td className="px-4 py-3 text-sm text-gray-500 hidden sm:table-cell">{m.counterparty || '—'}</td>
                   <td className="px-4 py-3 text-sm text-gray-500 hidden md:table-cell">{m.invoice_number || '—'}</td>
