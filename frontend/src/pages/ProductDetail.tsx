@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import type { Product, StockMovement, MovementForm } from '../types'
 import { canUndo, quantityDisplay, typeColor, typeLabel, validateMovement } from '../utils/movement'
+import { fetchPaginated } from '../utils/fetch-paginated'
 
 export default function ProductDetail() {
   const { id } = useParams<{ id: string }>()
@@ -21,15 +22,18 @@ export default function ProductDetail() {
 
   async function fetchData() {
     setLoading(true)
-    const [{ data: prod }, { data: movs }] = await Promise.all([
+    const [{ data: prod }, movs] = await Promise.all([
       supabase.from('products').select('*').eq('id', id).single(),
-      supabase.from('stock_movements').select('*').eq('product_id', id).order('created_at', { ascending: false }),
+      fetchPaginated<StockMovement>((from, to) =>
+        supabase.from('stock_movements').select('*').eq('product_id', id)
+          .order('created_at', { ascending: false }).range(from, to)
+      ),
     ])
     if (prod) {
       setProduct(prod)
       setDetailsForm({ description: prod.description ?? '', photo_urls: prod.photo_urls ?? [], external_url: prod.external_url ?? '' })
     }
-    if (movs) setMovements(movs)
+    setMovements(movs)
     setLoading(false)
   }
 

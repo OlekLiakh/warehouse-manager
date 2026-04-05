@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import type { Product } from '../types'
 import { filterProducts } from '../utils/search'
+import { fetchPaginated } from '../utils/fetch-paginated'
 
 export default function Products() {
   const navigate = useNavigate()
@@ -11,18 +12,18 @@ export default function Products() {
   const [showInactive, setShowInactive] = useState(false)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => { fetchProducts() }, [showInactive])
+  useEffect(() => { fetchProducts() }, [])
 
   async function fetchProducts() {
     setLoading(true)
-    let query = supabase.from('products').select('*').order('name')
-    if (!showInactive) query = query.eq('is_active', true)
-    const { data, error } = await query
-    if (!error && data) setProducts(data)
+    const all = await fetchPaginated<Product>((from, to) =>
+      supabase.from('products').select('*').order('name').range(from, to)
+    )
+    setProducts(all)
     setLoading(false)
   }
 
-  const filtered = filterProducts(products, search)
+  const filtered = filterProducts(products, search).filter(p => showInactive || p.is_active)
 
   return (
     <div>

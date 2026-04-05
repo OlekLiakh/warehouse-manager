@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import type { StockMovement } from '../types'
 import { quantityDisplay, typeColor, typeLabel } from '../utils/movement'
 import { groupByInvoice } from '../utils/journal'
+import { fetchPaginated } from '../utils/fetch-paginated'
 
 interface MovementWithProduct extends StockMovement {
   products: { name: string; articles: string[] } | null
@@ -29,14 +30,17 @@ export default function Journal() {
     const start = new Date(`${date}T00:00:00`)
     const end = new Date(`${date}T23:59:59.999`)
 
-    const { data } = await supabase
-      .from('stock_movements')
-      .select('*, products(name, articles)')
-      .gte('created_at', start.toISOString())
-      .lte('created_at', end.toISOString())
-      .order('created_at', { ascending: false })
+    const all = await fetchPaginated<MovementWithProduct>((from, to) =>
+      supabase
+        .from('stock_movements')
+        .select('*, products(name, articles)')
+        .gte('created_at', start.toISOString())
+        .lte('created_at', end.toISOString())
+        .order('created_at', { ascending: false })
+        .range(from, to)
+    )
 
-    if (data) setMovements(data as MovementWithProduct[])
+    setMovements(all)
     setLoading(false)
   }
 
