@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { quantityDisplay, typeColor, typeLabel, validateMovement } from './movement'
+import { canUndo, quantityDisplay, typeColor, typeLabel, validateMovement } from './movement'
 import type { StockMovement } from '../types'
 
 const base: StockMovement = {
@@ -82,6 +82,30 @@ describe('validateMovement', () => {
 
   it('IN is not limited by current stock', () => {
     expect(validateMovement('IN', 9999, 0)).toBeNull()
+  })
+})
+
+describe('canUndo', () => {
+  it('today IN → true', () => {
+    expect(canUndo({ ...base, type: 'IN', created_at: new Date().toISOString() })).toBe(true)
+  })
+
+  it('today OUT → true', () => {
+    expect(canUndo({ ...base, type: 'OUT', created_at: new Date().toISOString() })).toBe(true)
+  })
+
+  it('yesterday → false', () => {
+    const yesterday = new Date()
+    yesterday.setDate(yesterday.getDate() - 1)
+    expect(canUndo({ ...base, type: 'IN', created_at: yesterday.toISOString() })).toBe(false)
+  })
+
+  it('ADJUST → false', () => {
+    expect(canUndo({ ...base, type: 'ADJUST', created_at: new Date().toISOString() })).toBe(false)
+  })
+
+  it('today MOVE → true', () => {
+    expect(canUndo({ ...base, type: 'MOVE', created_at: new Date().toISOString() })).toBe(true)
   })
 })
 

@@ -14,6 +14,12 @@ export function validateMovement(
   return null
 }
 
+export function canUndo(movement: StockMovement): boolean {
+  const today = new Date().toDateString()
+  const movementDate = new Date(movement.created_at).toDateString()
+  return today === movementDate && movement.type !== 'ADJUST'
+}
+
 export function quantityDisplay(m: StockMovement): string {
   if (m.type === 'ADJUST') return `=${m.quantity}`
   if (m.type === 'OUT') return `−${m.quantity}`

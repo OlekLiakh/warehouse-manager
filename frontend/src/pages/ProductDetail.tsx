@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import type { Product, StockMovement, MovementForm } from '../types'
-import { quantityDisplay, typeColor, typeLabel, validateMovement } from '../utils/movement'
+import { canUndo, quantityDisplay, typeColor, typeLabel, validateMovement } from '../utils/movement'
 
 export default function ProductDetail() {
   const { id } = useParams<{ id: string }>()
@@ -61,6 +61,21 @@ export default function ProductDetail() {
       alert('Помилка: ' + error.message)
     }
     setSaving(false)
+  }
+
+  async function handleUndoLastMovement() {
+    const lastMovement = movements[0]
+    if (!lastMovement) return
+    const today = new Date().toDateString()
+    const movementDate = new Date(lastMovement.created_at).toDateString()
+    if (today !== movementDate) {
+      alert('Можна скасувати тільки операції зроблені сьогодні')
+      return
+    }
+    if (!confirm(`Скасувати останню операцію "${typeLabel(lastMovement.type)}" (${quantityDisplay(lastMovement)})?`)) return
+    const { error } = await supabase.from('stock_movements').delete().eq('id', lastMovement.id)
+    if (!error) fetchData()
+    else alert('Помилка: ' + error.message)
   }
 
   if (loading) return <p>Завантаження...</p>
@@ -191,10 +206,11 @@ export default function ProductDetail() {
                   <th style={th}>Контрагент</th>
                   <th style={th}>Накладна</th>
                   <th style={th}>Нотатка</th>
+                  <th style={th}></th>
                 </tr>
               </thead>
               <tbody>
-                {movements.map(m => (
+                {movements.map((m, index) => (
                   <tr key={m.id} style={{ borderBottom: '1px solid #eee' }}>
                     <td style={td}>{new Date(m.created_at).toLocaleString('uk-UA')}</td>
                     <td style={{ ...td, color: typeColor(m.type) }}>
@@ -206,6 +222,15 @@ export default function ProductDetail() {
                     <td style={td}>{m.counterparty || '—'}</td>
                     <td style={td}>{m.invoice_number || '—'}</td>
                     <td style={td}>{m.note || '—'}</td>
+                    <td style={td}>
+                      {index === 0 && canUndo(m) && (
+                        <button onClick={handleUndoLastMovement}
+                          style={{ color: '#e74c3c', fontSize: 12, padding: '2px 8px', cursor: 'pointer', border: '1px solid #e74c3c', borderRadius: 4, background: 'transparent' }}
+                          title="Скасувати цю операцію">
+                          ↩️ скасувати
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
