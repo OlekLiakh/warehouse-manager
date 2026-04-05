@@ -45,19 +45,43 @@ describe('groupByInvoice', () => {
     expect(groups).toHaveLength(2)
     expect(groups[0].invoice_number).toBe('PN-001')
     expect(groups[0].movements).toHaveLength(2)
+    expect(groups[0].label).toBe('Supplier A — ПН №PN-001')
     expect(groups[1].invoice_number).toBe('PN-002')
     expect(groups[1].movements).toHaveLength(1)
   })
 
-  it('groups null invoice and counterparty together', () => {
+  it('separates "Імпорт з CSV" into initial stock group', () => {
     const movements = [
-      { ...base, id: '1', invoice_number: null, counterparty: null },
-      { ...base, id: '2', invoice_number: null, counterparty: null },
+      { ...base, id: '1', type: 'IN' as const, note: 'Імпорт з CSV', invoice_number: null, counterparty: null },
+      { ...base, id: '2', type: 'IN' as const, note: 'Імпорт з CSV', invoice_number: null, counterparty: null },
+      { ...base, id: '3', type: 'IN' as const, note: null, invoice_number: null, counterparty: null },
     ]
     const groups = groupByInvoice(movements)
-    expect(groups).toHaveLength(1)
-    expect(groups[0].movements).toHaveLength(2)
-    expect(groups[0].invoice_number).toBeNull()
+    expect(groups).toHaveLength(2)
+    const initial = groups.find(g => g.isInitialStock)!
+    expect(initial).toBeDefined()
+    expect(initial.label).toBe('📦 Початковий залишок')
+    expect(initial.movements).toHaveLength(2)
+    const noInvoice = groups.find(g => !g.isInitialStock)!
+    expect(noInvoice.label).toBe('📦 Прийом (без накладної)')
+    expect(noInvoice.movements).toHaveLength(1)
+  })
+
+  it('marks initial stock group with isInitialStock=true', () => {
+    const movements = [
+      { ...base, id: '1', type: 'IN' as const, note: 'Імпорт з CSV', invoice_number: null, counterparty: null },
+    ]
+    const groups = groupByInvoice(movements)
+    expect(groups[0].isInitialStock).toBe(true)
+  })
+
+  it('sets type based on movement types in group', () => {
+    const movements = [
+      { ...base, id: '1', type: 'OUT' as const, invoice_number: 'PN-001', counterparty: 'A' },
+      { ...base, id: '2', type: 'OUT' as const, invoice_number: 'PN-001', counterparty: 'A' },
+    ]
+    const groups = groupByInvoice(movements)
+    expect(groups[0].type).toBe('OUT')
   })
 
   it('separates same invoice but different counterparty', () => {
@@ -71,5 +95,14 @@ describe('groupByInvoice', () => {
 
   it('returns empty array for empty input', () => {
     expect(groupByInvoice([])).toEqual([])
+  })
+
+  it('IN with counterparty but no invoice is not initial stock', () => {
+    const movements = [
+      { ...base, id: '1', type: 'IN' as const, note: 'Імпорт з CSV', invoice_number: null, counterparty: 'Someone' },
+    ]
+    const groups = groupByInvoice(movements)
+    expect(groups[0].isInitialStock).toBe(false)
+    expect(groups[0].label).toBe('Someone')
   })
 })

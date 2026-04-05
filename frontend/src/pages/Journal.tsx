@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import type { StockMovement } from '../types'
-import { quantityDisplay, typeColor, typeLabel } from '../utils/movement'
+import { quantityDisplay } from '../utils/movement'
 import { groupByInvoice } from '../utils/journal'
+import type { InvoiceGroup } from '../utils/journal'
 import { fetchPaginated } from '../utils/fetch-paginated'
 
 interface MovementWithProduct extends StockMovement {
@@ -15,6 +16,18 @@ function todayString(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+function groupHeaderColor(type: InvoiceGroup<MovementWithProduct>['type']) {
+  if (type === 'IN') return 'bg-green-600'
+  if (type === 'OUT') return 'bg-red-600'
+  return 'bg-gray-600'
+}
+
+function groupIcon(type: InvoiceGroup<MovementWithProduct>['type']) {
+  if (type === 'IN') return '📦'
+  if (type === 'OUT') return '📤'
+  return '🔄'
+}
+
 export default function Journal() {
   const navigate = useNavigate()
   const [date, setDate] = useState(todayString())
@@ -22,6 +35,8 @@ export default function Journal() {
   const [loading, setLoading] = useState(true)
   const [typeFilter, setTypeFilter] = useState<'ALL' | 'IN' | 'OUT'>('ALL')
   const [groupedView, setGroupedView] = useState(false)
+  const [hideInitial, setHideInitial] = useState(true)
+  const [collapsed, setCollapsed] = useState<Set<number>>(new Set())
 
   async function fetchMovements() {
     setLoading(true)
@@ -47,6 +62,23 @@ export default function Journal() {
 
   const filtered = movements.filter(m => typeFilter === 'ALL' || m.type === typeFilter)
   const groups = groupByInvoice(filtered)
+  const visibleGroups = hideInitial ? groups.filter(g => !g.isInitialStock) : groups
+
+  function toggleCollapse(index: number) {
+    setCollapsed(prev => {
+      const next = new Set(prev)
+      if (next.has(index)) next.delete(index)
+      else next.add(index)
+      return next
+    })
+  }
+
+  // Auto-collapse initial stock groups
+  useEffect(() => {
+    const initialIndices = new Set<number>()
+    groups.forEach((g, i) => { if (g.isInitialStock) initialIndices.add(i) })
+    setCollapsed(initialIndices)
+  }, [movements, typeFilter]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const filterButtons = [
     { key: 'ALL' as const, label: 'Всі' },
@@ -84,11 +116,18 @@ export default function Journal() {
           ))}
         </div>
 
-        <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none ml-auto">
-          <input type="checkbox" checked={groupedView} onChange={e => setGroupedView(e.target.checked)}
-            className="rounded border-gray-300" />
-          По замовленнях
-        </label>
+        <div className="flex items-center gap-4 ml-auto">
+          <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
+            <input type="checkbox" checked={hideInitial} onChange={e => setHideInitial(e.target.checked)}
+              className="rounded border-gray-300" />
+            Приховати початкові залишки
+          </label>
+          <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
+            <input type="checkbox" checked={groupedView} onChange={e => setGroupedView(e.target.checked)}
+              className="rounded border-gray-300" />
+            По замовленнях
+          </label>
+        </div>
       </div>
 
       {loading ? (
@@ -97,28 +136,35 @@ export default function Journal() {
         <p className="text-gray-400 py-8 text-center">Рухів за {date} не знайдено</p>
       ) : groupedView ? (
         <div className="space-y-3">
-          {groups.map((g, i) => (
-            <div key={i} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-              <div className="flex justify-between items-center mb-3">
-                <div>
-                  <span className="font-semibold text-gray-900">{g.counterparty || 'Без контрагента'}</span>
-                  {g.invoice_number && <span className="ml-2 text-sm text-gray-500">ПН№ {g.invoice_number}</span>}
+          {visibleGroups.map((g, i) => (
+            <div key={i} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+              <button
+                onClick={() => toggleCollapse(i)}
+                className={`w-full flex items-center justify-between px-4 py-3 text-white text-left ${groupHeaderColor(g.type)}`}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span>{groupIcon(g.type)}</span>
+                  <span className="font-semibold truncate">{g.label}</span>
                 </div>
-                <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{g.movements.length} поз.</span>
-              </div>
-              <div className="divide-y divide-gray-100">
-                {g.movements.map(m => (
-                  <div key={m.id} className="flex items-center gap-3 py-2 text-sm">
-                    <span className="cursor-pointer text-blue-600 hover:text-blue-800 transition-colors flex-1 min-w-0 truncate"
-                      onClick={() => navigate(`/product/${m.product_id}`)}>
-                      {m.products?.name ?? m.product_id}
-                    </span>
-                    <span className="font-medium whitespace-nowrap" style={{ color: typeColor(m.type) }}>{typeLabel(m.type)}</span>
-                    <span className="font-bold whitespace-nowrap">{quantityDisplay(m)}</span>
-                    {m.note && <span className="text-gray-400 text-xs hidden sm:block truncate max-w-32">{m.note}</span>}
-                  </div>
-                ))}
-              </div>
+                <div className="flex items-center gap-2 shrink-0 ml-2">
+                  <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">{g.movements.length} поз.</span>
+                  <span className="text-sm">{collapsed.has(i) ? '▸' : '▾'}</span>
+                </div>
+              </button>
+
+              {!collapsed.has(i) && (
+                <div className="divide-y divide-gray-100">
+                  {g.movements.map(m => (
+                    <div key={m.id} className="flex items-center gap-3 px-4 py-2 text-sm">
+                      <span className="cursor-pointer text-blue-600 hover:text-blue-800 transition-colors flex-1 min-w-0 truncate"
+                        onClick={() => navigate(`/product/${m.product_id}`)}>
+                        {m.products?.name ?? m.product_id}
+                      </span>
+                      <span className="font-bold whitespace-nowrap">{quantityDisplay(m)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -137,13 +183,15 @@ export default function Journal() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filtered.map(m => (
+              {(hideInitial ? filtered.filter(m => m.note !== 'Імпорт з CSV') : filtered).map(m => (
                 <tr key={m.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
                     {new Date(m.created_at).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}
                   </td>
-                  <td className="px-4 py-3 text-sm font-medium whitespace-nowrap" style={{ color: typeColor(m.type) }}>
-                    {typeLabel(m.type)}
+                  <td className="px-4 py-3 text-sm font-medium whitespace-nowrap">
+                    <span className={m.type === 'IN' ? 'text-green-700' : m.type === 'OUT' ? 'text-red-700' : 'text-gray-500'}>
+                      {m.type === 'IN' ? '📦 Прийом' : m.type === 'OUT' ? '📤 Видача' : m.type === 'ADJUST' ? '✏️ Уточнення' : '🔄 Переміщення'}
+                    </span>
                   </td>
                   <td className="px-4 py-3 text-sm">
                     <span className="cursor-pointer text-blue-600 hover:text-blue-800 transition-colors"
