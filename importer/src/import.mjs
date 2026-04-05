@@ -10,12 +10,62 @@ config({ path: resolve(__dirname, '..', '.env.local') })
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_KEY
+const BATCH_SIZE = 50
 
 function getSupabase() {
   if (!SUPABASE_URL || !SUPABASE_KEY) {
     throw new Error('SUPABASE_URL та SUPABASE_KEY мають бути встановлені в .env.local')
   }
   return createClient(SUPABASE_URL, SUPABASE_KEY)
+}
+
+/**
+ * Build a dedup key: name + sorted articles.
+ */
+export function makeProductKey(name, articles) {
+  return `${name}|${[...articles].sort().join(',')}`
+}
+
+/**
+ * Filter out products that already exist in DB (by name+articles key).
+ * @param {Array} products - parsed products
+ * @param {Set<string>} existingKeys - set of keys already in DB
+ * @returns {{ newProducts: Array, duplicates: Array }}
+ */
+export function filterNewProducts(products, existingKeys) {
+  const newProducts = []
+  const duplicates = []
+  for (const p of products) {
+    const key = makeProductKey(p.name, p.articles)
+    if (existingKeys.has(key)) {
+      duplicates.push(p)
+    } else {
+      newProducts.push(p)
+    }
+  }
+  return { newProducts, duplicates }
+}
+
+/**
+ * Fetch all existing product keys from Supabase (paginated).
+ */
+async function fetchExistingProductKeys(supabase) {
+  const keys = new Set()
+  let offset = 0
+  const PAGE = 1000
+  while (true) {
+    const { data, error } = await supabase
+      .from('products')
+      .select('name, articles')
+      .range(offset, offset + PAGE - 1)
+    if (error) throw new Error(`Помилка читання products: ${error.message}`)
+    for (const row of data) {
+      keys.add(makeProductKey(row.name, row.articles))
+    }
+    if (data.length < PAGE) break
+    offset += PAGE
+  }
+  return keys
 }
 
 /**
@@ -26,6 +76,8 @@ function getSupabase() {
  * @returns {Promise<{ inserted: number, skipped: number, movements: number, errors: string[] }>}
  */
 export async function importCSV(filePath, { dryRun = false } = {}) {
+  const t0 = Date.now()
+
   // Step 1: Validate
   console.log('🔍 Валідація файлу...')
   const validation = validateCSV(filePath)
@@ -55,69 +107,112 @@ export async function importCSV(filePath, { dryRun = false } = {}) {
     products.slice(0, 10).forEach((p, i) => {
       console.log(`  ${i + 1}. ${p.name} | ${p.articles.join(', ') || '—'} | Полка: ${p.shelf_location || '—'} | Залишок: ${p.current_stock}`)
     })
+    const elapsed = ((Date.now() - t0) / 1000).toFixed(1)
+    console.log(`\n⏱️  ${elapsed} сек`)
     return { inserted: products.length, skipped: 0, movements: movementsCount, errors: [] }
   }
 
-  // Step 3: Insert into Supabase
+  // Step 3: Check for existing products in DB
   const supabase = getSupabase()
-  let inserted = 0
-  let skipped = 0
-  let movements = 0
-  const errors = []
+  console.log('🔍 Перевірка дублікатів в БД...')
+  const existingKeys = await fetchExistingProductKeys(supabase)
+  const { newProducts, duplicates } = filterNewProducts(products, existingKeys)
 
-  for (const product of products) {
-    // Insert with current_stock: 0 — the DB trigger will update it
-    // when we insert the stock_movement below
+  if (duplicates.length > 0) {
+    console.log(`⏭️  Пропущено дублікатів: ${duplicates.length}`)
+    duplicates.slice(0, 10).forEach(d =>
+      console.log(`   - ${d.name} [${d.articles.join(', ') || 'без артикулу'}]`)
+    )
+    if (duplicates.length > 10) console.log(`   ... і ще ${duplicates.length - 10}`)
+  }
+
+  if (newProducts.length === 0) {
+    console.log('ℹ️  Нових товарів немає — все вже в БД.')
+    const elapsed = ((Date.now() - t0) / 1000).toFixed(1)
+    console.log(`⏱️  ${elapsed} сек`)
+    return { inserted: 0, skipped: duplicates.length, movements: 0, errors: [] }
+  }
+
+  // Step 4: Batch insert products
+  console.log(`📦 Додаю ${newProducts.length} товарів батчами по ${BATCH_SIZE}...`)
+  const errors = []
+  let inserted = 0
+  const stockMap = new Map()
+  for (const p of newProducts) {
+    if (p.current_stock > 0) {
+      stockMap.set(makeProductKey(p.name, p.articles), p.current_stock)
+    }
+  }
+
+  const pendingMovements = []
+
+  for (let i = 0; i < newProducts.length; i += BATCH_SIZE) {
+    const chunk = newProducts.slice(i, i + BATCH_SIZE)
+    const rows = chunk.map(p => ({
+      name: p.name,
+      articles: p.articles,
+      shelf_location: p.shelf_location,
+      boss_quantity: p.boss_quantity,
+      current_stock: 0,
+      is_active: true,
+    }))
+
     const { data, error } = await supabase
       .from('products')
-      .insert({
-        name: product.name,
-        articles: product.articles,
-        shelf_location: product.shelf_location,
-        boss_quantity: product.boss_quantity,
-        current_stock: 0,
-        is_active: true,
-      })
-      .select('id')
-      .single()
+      .insert(rows)
+      .select('id, name, articles')
 
     if (error) {
-      errors.push(`Помилка при вставці "${product.name}": ${error.message}`)
-      skipped++
+      errors.push(`Помилка батчу ${i + 1}-${i + chunk.length}: ${error.message}`)
       continue
     }
 
-    inserted++
+    inserted += data.length
 
-    // Create initial stock movement if stock > 0
-    if (product.current_stock > 0) {
-      const { error: mvError } = await supabase
-        .from('stock_movements')
-        .insert({
-          product_id: data.id,
+    for (const row of data) {
+      const key = makeProductKey(row.name, row.articles)
+      const stock = stockMap.get(key)
+      if (stock) {
+        pendingMovements.push({
+          product_id: row.id,
           type: 'IN',
-          quantity: product.current_stock,
+          quantity: stock,
           note: 'Початковий залишок з CSV',
         })
+      }
+    }
 
-      if (mvError) {
-        errors.push(`Помилка руху для "${product.name}": ${mvError.message}`)
+    const done = Math.min(i + BATCH_SIZE, newProducts.length)
+    console.log(`   Додано ${done}/${newProducts.length}...`)
+  }
+
+  // Step 5: Batch insert stock movements
+  let movements = 0
+  if (pendingMovements.length > 0) {
+    console.log(`📦 Додаю ${pendingMovements.length} рухів залишків...`)
+    for (let i = 0; i < pendingMovements.length; i += BATCH_SIZE) {
+      const chunk = pendingMovements.slice(i, i + BATCH_SIZE)
+      const { error } = await supabase.from('stock_movements').insert(chunk)
+      if (error) {
+        errors.push(`Помилка руху батчу ${i + 1}-${i + chunk.length}: ${error.message}`)
       } else {
-        movements++
+        movements += chunk.length
       }
     }
   }
 
+  const elapsed = ((Date.now() - t0) / 1000).toFixed(1)
   console.log('\n✅ Імпорт завершено:')
   console.log(`   Додано товарів: ${inserted}`)
-  console.log(`   Пропущено: ${skipped}`)
+  console.log(`   Пропущено дублікатів: ${duplicates.length}`)
   console.log(`   Рухів залишків: ${movements}`)
+  console.log(`   ⏱️  ${elapsed} сек`)
   if (errors.length > 0) {
     console.log(`   ⚠️  Помилки (${errors.length}):`)
     errors.forEach(e => console.log(`      - ${e}`))
   }
 
-  return { inserted, skipped, movements, errors }
+  return { inserted, skipped: duplicates.length, movements, errors }
 }
 
 /**
