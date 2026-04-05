@@ -25,8 +25,6 @@ export default function ProductForm() {
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(isEdit)
 
-  useEffect(() => { if (isEdit) fetchProduct() }, [id])
-
   async function fetchProduct() {
     const { data } = await supabase.from('products').select('*').eq('id', id).single()
     if (data) {
@@ -44,6 +42,8 @@ export default function ProductForm() {
     }
     setLoading(false)
   }
+
+  useEffect(() => { if (isEdit) fetchProduct() }, [id])
 
   async function handleSave() {
     if (!form.name.trim()) return alert('Введіть назву товару')

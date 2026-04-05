@@ -18,8 +18,6 @@ export default function ProductDetail() {
   const [form, setForm] = useState<Partial<MovementForm>>({ quantity: 1 })
   const [saving, setSaving] = useState(false)
 
-  useEffect(() => { fetchData() }, [id])
-
   async function fetchData() {
     setLoading(true)
     const [{ data: prod }, movs] = await Promise.all([
@@ -36,6 +34,8 @@ export default function ProductDetail() {
     setMovements(movs)
     setLoading(false)
   }
+
+  useEffect(() => { fetchData() }, [id])
 
   async function handleSaveDetails() {
     const { error } = await supabase.from('products').update(detailsForm).eq('id', id)

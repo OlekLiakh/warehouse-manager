@@ -12,8 +12,6 @@ export default function Products() {
   const [showInactive, setShowInactive] = useState(false)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => { fetchProducts() }, [])
-
   async function fetchProducts() {
     setLoading(true)
     const all = await fetchPaginated<Product>((from, to) =>
@@ -22,6 +20,8 @@ export default function Products() {
     setProducts(all)
     setLoading(false)
   }
+
+  useEffect(() => { fetchProducts() }, [])
 
   const filtered = filterProducts(products, search).filter(p => showInactive || p.is_active)
 

@@ -23,8 +23,6 @@ export default function Journal() {
   const [typeFilter, setTypeFilter] = useState<'ALL' | 'IN' | 'OUT'>('ALL')
   const [groupedView, setGroupedView] = useState(false)
 
-  useEffect(() => { fetchMovements() }, [date])
-
   async function fetchMovements() {
     setLoading(true)
     const start = new Date(`${date}T00:00:00`)
@@ -43,6 +41,8 @@ export default function Journal() {
     setMovements(all)
     setLoading(false)
   }
+
+  useEffect(() => { fetchMovements() }, [date])
 
   const filtered = movements.filter(m => typeFilter === 'ALL' || m.type === typeFilter)
   const groups = groupByInvoice(filtered)
