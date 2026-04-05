@@ -31,7 +31,6 @@ export function groupByInvoice<T extends {
 
   for (const m of movements) {
     const isInitial = m.type === 'IN' && !m.invoice_number && !m.counterparty && m.note === 'Імпорт з CSV'
-    const isInNoInvoice = m.type === 'IN' && !m.invoice_number && !m.counterparty && !isInitial
 
     let key: string
     let label: string
@@ -41,15 +40,17 @@ export function groupByInvoice<T extends {
       key = '__initial_stock__'
       label = '📦 Початковий залишок'
       isInitialStock = true
-    } else if (isInNoInvoice) {
+    } else if (m.invoice_number) {
+      key = `inv:${m.invoice_number}`
+      label = m.type === 'IN'
+        ? `📦 Прийом — ПН №${m.invoice_number}`
+        : `📤 Видача — ПН №${m.invoice_number}`
+    } else if (m.type === 'OUT') {
+      key = '__out_no_invoice__'
+      label = '📤 Видача (без накладної)'
+    } else {
       key = '__in_no_invoice__'
       label = '📦 Прийом (без накладної)'
-    } else {
-      key = `${m.invoice_number ?? ''}|||${m.counterparty ?? ''}`
-      const parts: string[] = []
-      if (m.counterparty) parts.push(m.counterparty)
-      if (m.invoice_number) parts.push(`ПН №${m.invoice_number}`)
-      label = parts.length > 0 ? parts.join(' — ') : 'Без контрагента'
     }
 
     if (!map.has(key)) {

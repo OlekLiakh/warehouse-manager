@@ -100,9 +100,9 @@ describe('getInvoiceLabel', () => {
       .toBe('📦 Прихід')
   })
 
-  it('returns label for IN with counterparty and invoice number', () => {
+  it('returns label for IN with invoice number (counterparty ignored)', () => {
     expect(getInvoiceLabel({ type: 'IN', subtype: null, counterparty: 'Постачальник А', invoice_number: 'PN-001' }))
-      .toBe('📦 Прихід — Постачальник А — ПН №PN-001')
+      .toBe('📦 Прихід — ПН №PN-001')
   })
 
   it('returns label for OUT DNIPRO', () => {
@@ -110,14 +110,14 @@ describe('getInvoiceLabel', () => {
       .toBe('🚚 Дніпро')
   })
 
-  it('returns label for OUT PICKUP with counterparty', () => {
+  it('returns label for OUT PICKUP (counterparty ignored)', () => {
     expect(getInvoiceLabel({ type: 'OUT', subtype: 'PICKUP', counterparty: 'Клієнт Б', invoice_number: null }))
-      .toBe('🧍 Самовивіз — Клієнт Б')
+      .toBe('🧍 Самовивіз')
   })
 
-  it('returns label for OUT NOVA_POSHTA with all fields', () => {
+  it('returns label for OUT NOVA_POSHTA with invoice number (counterparty ignored)', () => {
     expect(getInvoiceLabel({ type: 'OUT', subtype: 'NOVA_POSHTA', counterparty: 'Іванов', invoice_number: '123' }))
-      .toBe('📮 Нова Пошта — Іванов — ПН №123')
+      .toBe('📮 Нова Пошта — ПН №123')
   })
 
   it('returns generic label for OUT without subtype', () => {

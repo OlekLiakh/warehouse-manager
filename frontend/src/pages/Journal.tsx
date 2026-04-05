@@ -5,7 +5,7 @@ import type { StockMovement, Invoice } from '../types'
 import { quantityDisplay } from '../utils/movement'
 import { groupByInvoice, isInitialStockMovement } from '../utils/journal'
 import type { InvoiceGroup } from '../utils/journal'
-import { canCancelInvoice, getInvoiceLabel } from '../utils/invoice'
+import { canCancelInvoice, getInvoiceLabel, getSubtypeLabel } from '../utils/invoice'
 import { fetchPaginated } from '../utils/fetch-paginated'
 
 interface MovementWithProduct extends StockMovement {
@@ -80,10 +80,29 @@ export default function Journal() {
     return true
   })
 
-  const groups = groupByInvoice(filtered)
+  const rawGroups = groupByInvoice(filtered)
 
-  // Map invoice_id to Invoice for cancel button
+  // Map invoice_id to Invoice for cancel button and label enhancement
   const invoiceMap = new Map(invoices.map(inv => [inv.id, inv]))
+
+  // Enhance group labels: replace generic labels with subtype info from invoice data
+  const groups = rawGroups.map(g => {
+    if (g.isInitialStock || !g.movements[0]) return g
+    const invoiceId = g.movements[0].invoice_id
+    if (!invoiceId) return g
+    const inv = invoiceMap.get(invoiceId)
+    if (!inv) return g
+    const parts: string[] = []
+    if (inv.type === 'OUT' && inv.subtype) {
+      parts.push(getSubtypeLabel(inv.subtype))
+    } else if (inv.type === 'IN') {
+      parts.push('📦 Прихід')
+    } else {
+      parts.push('📤 Видача')
+    }
+    if (inv.invoice_number) parts.push(`ПН №${inv.invoice_number}`)
+    return { ...g, label: parts.join(' — ') }
+  })
 
   function toggleCollapse(label: string) {
     setCollapsed(prev => {
@@ -238,8 +257,7 @@ export default function Journal() {
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Товар</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">Артикул</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">К-сть</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">Контрагент</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">Накладна</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">Накладна</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Нотатка</th>
               </tr>
             </thead>
@@ -262,8 +280,7 @@ export default function Journal() {
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-500 hidden sm:table-cell">{m.products?.articles?.length ? m.products.articles.join(', ') : '—'}</td>
                   <td className="px-4 py-3 text-sm font-bold">{quantityDisplay(m)}</td>
-                  <td className="px-4 py-3 text-sm text-gray-500 hidden sm:table-cell">{m.counterparty || '—'}</td>
-                  <td className="px-4 py-3 text-sm text-gray-500 hidden md:table-cell">{m.invoice_number || '—'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-500 hidden sm:table-cell">{m.invoice_number || '—'}</td>
                   <td className="px-4 py-3 text-sm text-gray-500 hidden lg:table-cell">{m.note || '—'}</td>
                 </tr>
               ))}

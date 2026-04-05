@@ -68,7 +68,6 @@ export function getInvoiceLabel(invoice: Pick<Invoice, 'type' | 'subtype' | 'cou
     parts.push('📤 Видача')
   }
 
-  if (invoice.counterparty) parts.push(invoice.counterparty)
   if (invoice.invoice_number) parts.push(`ПН №${invoice.invoice_number}`)
 
   return parts.join(' — ')

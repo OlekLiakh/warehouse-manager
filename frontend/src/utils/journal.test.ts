@@ -37,7 +37,7 @@ describe('filterByDate', () => {
 })
 
 describe('groupByInvoice', () => {
-  it('groups by invoice_number + counterparty', () => {
+  it('groups by invoice_number', () => {
     const movements = [
       { ...base, id: '1', invoice_number: 'PN-001', counterparty: 'Supplier A' },
       { ...base, id: '2', invoice_number: 'PN-001', counterparty: 'Supplier A' },
@@ -47,7 +47,7 @@ describe('groupByInvoice', () => {
     expect(groups).toHaveLength(2)
     expect(groups[0].invoice_number).toBe('PN-001')
     expect(groups[0].movements).toHaveLength(2)
-    expect(groups[0].label).toBe('Supplier A — ПН №PN-001')
+    expect(groups[0].label).toBe('📦 Прийом — ПН №PN-001')
     expect(groups[1].invoice_number).toBe('PN-002')
     expect(groups[1].movements).toHaveLength(1)
   })
@@ -86,13 +86,14 @@ describe('groupByInvoice', () => {
     expect(groups[0].type).toBe('OUT')
   })
 
-  it('separates same invoice but different counterparty', () => {
+  it('merges same invoice with different counterparty into one group', () => {
     const movements = [
       { ...base, id: '1', invoice_number: 'PN-001', counterparty: 'A' },
       { ...base, id: '2', invoice_number: 'PN-001', counterparty: 'B' },
     ]
     const groups = groupByInvoice(movements)
-    expect(groups).toHaveLength(2)
+    expect(groups).toHaveLength(1)
+    expect(groups[0].movements).toHaveLength(2)
   })
 
   it('returns empty array for empty input', () => {
@@ -105,7 +106,26 @@ describe('groupByInvoice', () => {
     ]
     const groups = groupByInvoice(movements)
     expect(groups[0].isInitialStock).toBe(false)
-    expect(groups[0].label).toBe('Someone')
+    expect(groups[0].label).toBe('📦 Прийом (без накладної)')
+  })
+
+  it('OUT without invoice groups separately from IN without invoice', () => {
+    const movements = [
+      { ...base, id: '1', type: 'IN' as const, invoice_number: null, counterparty: null },
+      { ...base, id: '2', type: 'OUT' as const, invoice_number: null, counterparty: null },
+    ]
+    const groups = groupByInvoice(movements)
+    expect(groups).toHaveLength(2)
+    expect(groups.find(g => g.type === 'IN')!.label).toBe('📦 Прийом (без накладної)')
+    expect(groups.find(g => g.type === 'OUT')!.label).toBe('📤 Видача (без накладної)')
+  })
+
+  it('OUT with invoice shows Видача label', () => {
+    const movements = [
+      { ...base, id: '1', type: 'OUT' as const, invoice_number: 'PN-001', counterparty: null },
+    ]
+    const groups = groupByInvoice(movements)
+    expect(groups[0].label).toBe('📤 Видача — ПН №PN-001')
   })
 })
 

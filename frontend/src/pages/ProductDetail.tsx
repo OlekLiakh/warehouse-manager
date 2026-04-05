@@ -242,7 +242,6 @@ export default function ProductDetail() {
                     <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">Дата</th>
                     <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Тип</th>
                     <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">К-сть</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Контрагент</th>
                     <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">Накладна</th>
                     <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">Нотатка</th>
                     <th className="px-4 py-3"></th>
@@ -256,7 +255,6 @@ export default function ProductDetail() {
                         {typeLabel(m.type)}
                       </td>
                       <td className="px-4 py-3 text-sm font-bold">{quantityDisplay(m)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-500">{m.counterparty || '—'}</td>
                       <td className="px-4 py-3 text-sm text-gray-500 hidden sm:table-cell">{m.invoice_number || '—'}</td>
                       <td className="px-4 py-3 text-sm text-gray-500 hidden sm:table-cell">{m.note || '—'}</td>
                       <td className="px-4 py-3">

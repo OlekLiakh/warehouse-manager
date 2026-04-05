@@ -30,7 +30,6 @@ export default function InvoiceNew() {
   const [orders, setOrders] = useState<OrderDraft[]>([emptyOrder()])
   // Shared fields
   const [subtype, setSubtype] = useState<InvoiceSubtype | null>(null)
-  const [counterparty, setCounterparty] = useState('')
   const [invoiceNumber, setInvoiceNumber] = useState('')
   const [note, setNote] = useState('')
   // Picker state
@@ -132,7 +131,7 @@ export default function InvoiceNew() {
       .insert({
         type,
         subtype: type === 'OUT' ? subtype : null,
-        counterparty: counterparty.trim() || null,
+        counterparty: null,
         invoice_number: invoiceNumber.trim() || null,
         note: note.trim() || null,
       })
@@ -151,7 +150,7 @@ export default function InvoiceNew() {
         product_id: item.product_id,
         type: 'IN' as const,
         quantity: item.quantity,
-        counterparty: counterparty.trim() || null,
+        counterparty: null,
         invoice_number: invoiceNumber.trim() || null,
         invoice_id: invoice.id,
         note: note.trim() || null,
@@ -186,7 +185,7 @@ export default function InvoiceNew() {
           product_id: item.product_id,
           type: 'OUT' as const,
           quantity: item.quantity,
-          counterparty: counterparty.trim() || null,
+          counterparty: null,
           invoice_number: invoiceNumber.trim() || null,
           invoice_id: invoice.id,
           order_id: orderData.id,
@@ -246,27 +245,20 @@ export default function InvoiceNew() {
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-4">
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="block">
-                <span className="text-sm font-medium text-gray-700">Контрагент</span>
-                <input type="text" value={counterparty}
-                  onChange={e => setCounterparty(e.target.value)}
-                  placeholder="напр. ФОП Іванов"
-                  className="mt-1 block w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1a56db] focus:border-[#1a56db]" />
-              </label>
-              <label className="block">
                 <span className="text-sm font-medium text-gray-700">Номер накладної</span>
                 <input type="text" value={invoiceNumber}
                   onChange={e => setInvoiceNumber(e.target.value)}
                   placeholder="напр. ПН-00123"
                   className="mt-1 block w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1a56db] focus:border-[#1a56db]" />
               </label>
+              <label className="block">
+                <span className="text-sm font-medium text-gray-700">Нотатка</span>
+                <input type="text" value={note}
+                  onChange={e => setNote(e.target.value)}
+                  placeholder="необов'язково"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1a56db] focus:border-[#1a56db]" />
+              </label>
             </div>
-            <label className="block mt-3">
-              <span className="text-sm font-medium text-gray-700">Нотатка</span>
-              <input type="text" value={note}
-                onChange={e => setNote(e.target.value)}
-                placeholder="необов'язково"
-                className="mt-1 block w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1a56db] focus:border-[#1a56db]" />
-            </label>
           </div>
 
           {/* IN: flat items list */}
