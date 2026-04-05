@@ -7,7 +7,7 @@ import Journal from './pages/Journal'
 export default function App() {
   return (
     <BrowserRouter>
-      <div style={{ maxWidth: 900, margin: '0 auto', padding: '16px' }}>
+      <div className="max-w-4xl mx-auto px-4 py-4">
         <Routes>
           <Route path="/" element={<Products />} />
           <Route path="/product/new" element={<ProductForm />} />

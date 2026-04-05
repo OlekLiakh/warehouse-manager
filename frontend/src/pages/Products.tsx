@@ -27,65 +27,80 @@ export default function Products() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <h1 style={{ margin: 0 }}>🏪 Склад</h1>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => navigate('/journal')}>📓 Журнал</button>
-          <button onClick={() => navigate('/product/new')}>+ Додати товар</button>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold">🏪 Склад</h1>
+        <div className="flex gap-2">
+          <button onClick={() => navigate('/journal')}
+            className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors">
+            📓 Журнал
+          </button>
+          <button onClick={() => navigate('/product/new')}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+            + Додати товар
+          </button>
         </div>
       </div>
 
-      <input
-        type="text"
-        placeholder="Пошук по назві, артикулу, полиці, нотатках..."
-        value={search}
-        onChange={e => setSearch(e.target.value)}
-        style={{ width: '100%', padding: 8, marginBottom: 8, boxSizing: 'border-box', fontSize: 15 }}
-      />
+      <div className="relative mb-3">
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
+        <input
+          type="text"
+          placeholder="Пошук по назві, артикулу, полиці, нотатках..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        />
+      </div>
 
-      <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 16, fontSize: 13, color: '#666', cursor: 'pointer' }}>
-        <input type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)} />
+      <label className="inline-flex items-center gap-2 mb-4 text-sm text-gray-500 cursor-pointer select-none">
+        <input type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)}
+          className="rounded border-gray-300" />
         Показати неактивні
       </label>
 
-      {loading ? <p>Завантаження...</p> : filtered.length === 0 ? <p>Нічого не знайдено</p> : (
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ background: '#f0f0f0' }}>
-              <th style={th}>Назва</th>
-              <th style={th}>Артикул</th>
-              <th style={th}>Полиця</th>
-              <th style={th}>Залишок</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map(p => (
-              <tr
-                key={p.id}
-                onClick={() => navigate(`/product/${p.id}`)}
-                style={{ cursor: 'pointer', borderBottom: '1px solid #eee' }}
-                onMouseEnter={e => (e.currentTarget.style.background = '#f9f9f9')}
-                onMouseLeave={e => (e.currentTarget.style.background = '')}
-              >
-                <td style={td}>
-                  {p.name}
-                  {!p.is_active && <span style={{ color: '#c0392b', fontSize: 12, marginLeft: 6 }}>[неактивний]</span>}
-                  {p.notes && <span style={{ color: '#999', fontSize: 12, marginLeft: 6 }}>({p.notes})</span>}
-                </td>
-                <td style={td}>{p.articles.join(', ') || '—'}</td>
-                <td style={td}>{p.shelf_location || '—'}</td>
-                <td style={{ ...td, fontWeight: 'bold', color: p.current_stock === 0 ? 'red' : 'inherit' }}>
-                  {p.current_stock}
-                </td>
+      {loading ? (
+        <p className="text-gray-400 py-8 text-center">Завантаження...</p>
+      ) : filtered.length === 0 ? (
+        <p className="text-gray-400 py-8 text-center">Нічого не знайдено</p>
+      ) : (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-200">
+                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Назва</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">Артикул</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">Полиця</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Залишок</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {filtered.map(p => (
+                <tr
+                  key={p.id}
+                  onClick={() => navigate(`/product/${p.id}`)}
+                  className="hover:bg-gray-50 cursor-pointer transition-colors"
+                >
+                  <td className="px-4 py-3">
+                    <span className="font-medium text-gray-900">{p.name}</span>
+                    {!p.is_active && <span className="ml-2 text-xs text-red-600 bg-red-50 px-1.5 py-0.5 rounded">[неактивний]</span>}
+                    {p.notes && <span className="ml-2 text-xs text-gray-400">({p.notes})</span>}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-500 hidden sm:table-cell">{p.articles.join(', ') || '—'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-500 hidden md:table-cell">{p.shelf_location || '—'}</td>
+                  <td className="px-4 py-3">
+                    {p.current_stock === 0
+                      ? <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700">0</span>
+                      : <span className="font-bold text-gray-900">{p.current_stock}</span>
+                    }
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
-      <p style={{ color: '#999', fontSize: 13, marginTop: 8 }}>Показано: {filtered.length} з {products.length}</p>
+
+      <p className="text-sm text-gray-400 mt-3">Показано: {filtered.length} з {products.length}</p>
     </div>
   )
 }
-
-const th: React.CSSProperties = { textAlign: 'left', padding: '8px 12px', borderBottom: '2px solid #ddd' }
-const td: React.CSSProperties = { padding: '8px 12px' }

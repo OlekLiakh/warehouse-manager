@@ -14,6 +14,8 @@ const empty: ProductFormType = {
   external_url: null,
 }
 
+const inputClass = 'mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+
 export default function ProductForm() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -63,57 +65,73 @@ export default function ProductForm() {
     else alert('Помилка: ' + error.message)
   }
 
-  if (loading) return <p>Завантаження...</p>
+  if (loading) return <p className="text-gray-400 py-8 text-center">Завантаження...</p>
 
   return (
     <div>
-      <button onClick={() => navigate(isEdit ? `/product/${id}` : '/')} style={{ marginBottom: 16 }}>← Назад</button>
-      <h2>{isEdit ? '✏️ Редагувати товар' : '+ Новий товар'}</h2>
-      <div style={{ display: 'grid', gap: 12, maxWidth: 500 }}>
-        <label>Назва *
-          <input type="text" value={form.name}
-            onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-            placeholder="напр. Захист Переднього Підрамника MS/X Plaid"
-            style={inp} />
-        </label>
-        <label>Артикули (через кому)
-          <input type="text" value={articlesText}
-            onChange={e => setArticlesText(e.target.value)}
-            placeholder="напр. 1585229-00-D, 1585229-00-D АНАЛОГ"
-            style={inp} />
-          <span style={{ fontSize: 12, color: '#999' }}>Можна вказати кілька через кому</span>
-        </label>
-        <label>Полиця
-          <input type="text" value={form.shelf_location ?? ''}
-            onChange={e => setForm(f => ({ ...f, shelf_location: e.target.value }))}
-            placeholder="напр. А-1_2, Т-3_5, С-2_3"
-            style={inp} />
-        </label>
-        <label>Кількість по програмі БОСС
-          <input type="number" min={0} value={form.boss_quantity ?? ''}
-            onChange={e => setForm(f => ({ ...f, boss_quantity: e.target.value ? Number(e.target.value) : null }))}
-            style={inp} />
-        </label>
-        <label>Нотатки
-          <input type="text" value={form.notes ?? ''}
-            onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-            placeholder="напр. АНАЛОГ, БУ, УВАГА! 2 ПОЗИЦІЇ"
-            style={inp} />
-        </label>
-        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-          <button onClick={handleSave} disabled={saving}>
+      <button onClick={() => navigate(isEdit ? `/product/${id}` : '/')}
+        className="text-sm text-gray-500 hover:text-gray-700 mb-4 inline-block transition-colors">
+        ← Назад
+      </button>
+
+      <h2 className="text-xl font-bold mb-5">{isEdit ? '✏️ Редагувати товар' : '+ Новий товар'}</h2>
+
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5 max-w-lg">
+        <div className="grid gap-4">
+          <label className="block">
+            <span className="text-sm font-medium text-gray-700">Назва *</span>
+            <input type="text" value={form.name}
+              onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+              placeholder="напр. Захист Переднього Підрамника MS/X Plaid"
+              className={inputClass} />
+          </label>
+
+          <label className="block">
+            <span className="text-sm font-medium text-gray-700">Артикули (через кому)</span>
+            <input type="text" value={articlesText}
+              onChange={e => setArticlesText(e.target.value)}
+              placeholder="напр. 1585229-00-D, 1585229-00-D АНАЛОГ"
+              className={inputClass} />
+            <span className="text-xs text-gray-400 mt-1 block">Можна вказати кілька через кому</span>
+          </label>
+
+          <label className="block">
+            <span className="text-sm font-medium text-gray-700">Полиця</span>
+            <input type="text" value={form.shelf_location ?? ''}
+              onChange={e => setForm(f => ({ ...f, shelf_location: e.target.value }))}
+              placeholder="напр. А-1_2, Т-3_5, С-2_3"
+              className={inputClass} />
+          </label>
+
+          <label className="block">
+            <span className="text-sm font-medium text-gray-700">Кількість по програмі БОСС</span>
+            <input type="number" min={0} value={form.boss_quantity ?? ''}
+              onChange={e => setForm(f => ({ ...f, boss_quantity: e.target.value ? Number(e.target.value) : null }))}
+              className={inputClass} />
+          </label>
+
+          <label className="block">
+            <span className="text-sm font-medium text-gray-700">Нотатки</span>
+            <input type="text" value={form.notes ?? ''}
+              onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+              placeholder="напр. АНАЛОГ, БУ, УВАГА! 2 ПОЗИЦІЇ"
+              className={inputClass} />
+          </label>
+        </div>
+
+        <div className="flex gap-3 mt-6 pt-4 border-t border-gray-100">
+          <button onClick={handleSave} disabled={saving}
+            className="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
             {saving ? 'Збереження...' : isEdit ? '💾 Зберегти' : '✅ Додати товар'}
           </button>
           {isEdit && (
-            <button onClick={handleDeactivate} style={{ color: '#c0392b' }}>⛔ Деактивувати</button>
+            <button onClick={handleDeactivate}
+              className="px-5 py-2 border border-red-300 text-red-600 rounded-lg text-sm font-medium hover:bg-red-50 transition-colors">
+              ⛔ Деактивувати
+            </button>
           )}
         </div>
       </div>
     </div>
   )
-}
-
-const inp: React.CSSProperties = {
-  display: 'block', width: '100%', padding: 8,
-  marginTop: 4, boxSizing: 'border-box', fontSize: 14
 }
