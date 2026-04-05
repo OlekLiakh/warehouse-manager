@@ -4,6 +4,7 @@ import ProductDetail from './pages/ProductDetail'
 import ProductForm from './pages/ProductForm'
 import Journal from './pages/Journal'
 import InvoiceNew from './pages/InvoiceNew'
+import InvoiceDetail from './pages/InvoiceDetail'
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
           <Route path="/product/:id/edit" element={<ProductForm />} />
           <Route path="/journal" element={<Journal />} />
           <Route path="/invoice/new" element={<InvoiceNew />} />
+          <Route path="/invoice/:id" element={<InvoiceDetail />} />
         </Routes>
       </div>
     </BrowserRouter>

@@ -5,7 +5,7 @@ import type { StockMovement, Invoice } from '../types'
 import { quantityDisplay } from '../utils/movement'
 import { groupByInvoice, isInitialStockMovement } from '../utils/journal'
 import type { InvoiceGroup } from '../utils/journal'
-import { canCancelInvoice, getInvoiceLabel, getSubtypeLabel } from '../utils/invoice'
+import { getSubtypeLabel } from '../utils/invoice'
 import { fetchPaginated } from '../utils/fetch-paginated'
 
 interface MovementWithProduct extends StockMovement {
@@ -36,7 +36,6 @@ export default function Journal() {
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(true)
   const [typeFilter, setTypeFilter] = useState<'ALL' | 'IN' | 'OUT'>('ALL')
-  const [groupedView, setGroupedView] = useState(false)
   const [hideInitial, setHideInitial] = useState(true)
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
 
@@ -86,12 +85,13 @@ export default function Journal() {
   const invoiceMap = new Map(invoices.map(inv => [inv.id, inv]))
 
   // Enhance group labels: replace generic labels with subtype info from invoice data
+  // Also attach invoice_id to group for linking
   const groups = rawGroups.map(g => {
-    if (g.isInitialStock || !g.movements[0]) return g
+    if (g.isInitialStock || !g.movements[0]) return { ...g, invoiceId: null as string | null }
     const invoiceId = g.movements[0].invoice_id
-    if (!invoiceId) return g
+    if (!invoiceId) return { ...g, invoiceId: null as string | null }
     const inv = invoiceMap.get(invoiceId)
-    if (!inv) return g
+    if (!inv) return { ...g, invoiceId }
     const parts: string[] = []
     if (inv.type === 'OUT' && inv.subtype) {
       parts.push(getSubtypeLabel(inv.subtype))
@@ -101,7 +101,7 @@ export default function Journal() {
       parts.push('📤 Видача')
     }
     if (inv.invoice_number) parts.push(`ПН №${inv.invoice_number}`)
-    return { ...g, label: parts.join(' — ') }
+    return { ...g, label: parts.join(' — '), invoiceId }
   })
 
   function toggleCollapse(label: string) {
@@ -113,6 +113,7 @@ export default function Journal() {
     })
   }
 
+  // Auto-collapse only initial stock groups
   useEffect(() => {
     const initialLabels = new Set<string>()
     const allGroups = groupByInvoice(movements.filter(m => typeFilter === 'ALL' || m.type === typeFilter))
@@ -120,29 +121,11 @@ export default function Journal() {
     setCollapsed(initialLabels)
   }, [movements, typeFilter])
 
-  async function handleCancelInvoice(invoiceId: string) {
-    const inv = invoiceMap.get(invoiceId)
-    if (!inv) return
-    const label = getInvoiceLabel(inv)
-    if (!confirm(`Скасувати накладну "${label}"?\nВсі рухи та замовлення будуть видалені, залишки повернуться.`)) return
-    const { error } = await supabase.from('invoices').delete().eq('id', invoiceId)
-    if (error) {
-      alert('Помилка скасування: ' + error.message)
-    } else {
-      fetchMovements()
-    }
-  }
-
   const filterButtons = [
     { key: 'ALL' as const, label: 'Всі' },
     { key: 'IN' as const, label: '📦 Прийом' },
     { key: 'OUT' as const, label: '📤 Видача' },
   ]
-
-  // Invoices section: show today's invoices with cancel buttons
-  const todayInvoices = invoices.filter(inv =>
-    (typeFilter === 'ALL' || inv.type === typeFilter)
-  )
 
   return (
     <div className="overflow-x-hidden">
@@ -174,71 +157,58 @@ export default function Journal() {
           ))}
         </div>
 
-        <div className="flex items-center gap-4 sm:ml-auto">
-          <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
-            <input type="checkbox" checked={hideInitial} onChange={e => setHideInitial(e.target.checked)}
-              className="rounded border-gray-300 text-[#1a56db] focus:ring-[#1a56db]" />
-            Приховати початкові залишки
-          </label>
-          <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
-            <input type="checkbox" checked={groupedView} onChange={e => setGroupedView(e.target.checked)}
-              className="rounded border-gray-300 text-[#1a56db] focus:ring-[#1a56db]" />
-            По замовленнях
-          </label>
-        </div>
+        <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none sm:ml-auto">
+          <input type="checkbox" checked={hideInitial} onChange={e => setHideInitial(e.target.checked)}
+            className="rounded border-gray-300 text-[#1a56db] focus:ring-[#1a56db]" />
+          Приховати початкові залишки
+        </label>
       </div>
-
-      {/* Invoices with cancel buttons */}
-      {!loading && todayInvoices.length > 0 && (
-        <div className="mb-4 bg-white rounded-xl shadow-sm border border-gray-200 p-3">
-          <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Накладні за {date}</h3>
-          <div className="space-y-1">
-            {todayInvoices.map(inv => (
-              <div key={inv.id} className="flex items-center justify-between py-1.5 text-sm">
-                <span className="text-gray-700">{getInvoiceLabel(inv)}</span>
-                {canCancelInvoice(inv) && (
-                  <button onClick={() => handleCancelInvoice(inv.id)}
-                    className="text-xs text-red-500 border border-red-300 rounded-lg px-2 py-0.5 hover:bg-red-50 transition-colors">
-                    ❌ Скасувати
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {loading ? (
         <p className="text-gray-400 py-8 text-center">Завантаження...</p>
       ) : filtered.length === 0 ? (
         <p className="text-gray-400 py-8 text-center">Рухів за {date} не знайдено</p>
-      ) : groupedView ? (
+      ) : (
         <div className="space-y-3">
           {groups.map(g => (
             <div key={g.label} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-              <button
-                onClick={() => toggleCollapse(g.label)}
-                className={`w-full flex items-center justify-between px-4 py-3 text-white text-left rounded-t-xl ${groupHeaderColor(g.type)}`}
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <span>{groupIcon(g.type)}</span>
-                  <span className="font-semibold truncate">{g.label}</span>
-                </div>
-                <div className="flex items-center gap-2 shrink-0 ml-2">
-                  <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">{g.movements.length} поз.</span>
-                  <span className="text-sm">{collapsed.has(g.label) ? '▸' : '▾'}</span>
-                </div>
-              </button>
+              <div className="flex items-center">
+                <button
+                  onClick={() => toggleCollapse(g.label)}
+                  className={`flex-1 flex items-center justify-between px-4 py-3 text-white text-left ${groupHeaderColor(g.type)}`}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span>{groupIcon(g.type)}</span>
+                    {g.invoiceId ? (
+                      <span className="font-semibold truncate underline decoration-white/40 cursor-pointer"
+                        onClick={e => { e.stopPropagation(); navigate(`/invoice/${g.invoiceId}`) }}>
+                        {g.label}
+                      </span>
+                    ) : (
+                      <span className="font-semibold truncate">{g.label}</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0 ml-2">
+                    <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">{g.movements.length} поз.</span>
+                    <span className="text-sm">{collapsed.has(g.label) ? '▶' : '▼'}</span>
+                  </div>
+                </button>
+              </div>
 
               {!collapsed.has(g.label) && (
                 <div className="divide-y divide-gray-100">
                   {g.movements.map(m => (
-                    <div key={m.id} className="flex items-center gap-3 px-4 py-2 text-sm">
+                    <div key={m.id} className="flex items-center gap-2 px-4 py-2 text-sm">
+                      <span className={`w-8 text-center shrink-0 ${m.type === 'IN' ? 'text-[#057a55]' : m.type === 'OUT' ? 'text-[#e02424]' : 'text-gray-500'}`}>
+                        {m.type === 'IN' ? '📦' : m.type === 'OUT' ? '📤' : m.type === 'ADJUST' ? '✏️' : '🔄'}
+                      </span>
+                      <span className="font-mono text-xs text-gray-400 hidden sm:block w-28 truncate">
+                        {m.products?.articles?.length ? m.products.articles.join(', ') : '—'}
+                      </span>
                       <span className="cursor-pointer text-[#1a56db] hover:text-[#1648c0] transition-colors flex-1 min-w-0 truncate"
                         onClick={() => navigate(`/product/${m.product_id}`)}>
                         {m.products?.name ?? m.product_id}
                       </span>
-                      <span className="text-gray-400 text-xs hidden sm:block truncate max-w-40">{m.products?.articles?.length ? m.products.articles.join(', ') : '—'}</span>
                       <span className="font-bold whitespace-nowrap">{quantityDisplay(m)}</span>
                     </div>
                   ))}
@@ -246,46 +216,6 @@ export default function Journal() {
               )}
             </div>
           ))}
-        </div>
-      ) : (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">Час</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Тип</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Товар</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">Артикул</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">К-сть</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">Накладна</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Нотатка</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filtered.map(m => (
-                <tr key={m.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap hidden sm:table-cell">
-                    {new Date(m.created_at).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}
-                  </td>
-                  <td className="px-4 py-3 text-sm font-medium whitespace-nowrap">
-                    <span className={m.type === 'IN' ? 'text-[#057a55]' : m.type === 'OUT' ? 'text-[#e02424]' : 'text-gray-500'}>
-                      {m.type === 'IN' ? '📦 Прийом' : m.type === 'OUT' ? '📤 Видача' : m.type === 'ADJUST' ? '✏️ Уточнення' : '🔄 Переміщення'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm">
-                    <span className="cursor-pointer text-[#1a56db] hover:text-[#1648c0] transition-colors"
-                      onClick={() => navigate(`/product/${m.product_id}`)}>
-                      {m.products?.name ?? m.product_id}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-500 hidden sm:table-cell">{m.products?.articles?.length ? m.products.articles.join(', ') : '—'}</td>
-                  <td className="px-4 py-3 text-sm font-bold">{quantityDisplay(m)}</td>
-                  <td className="px-4 py-3 text-sm text-gray-500 hidden sm:table-cell">{m.invoice_number || '—'}</td>
-                  <td className="px-4 py-3 text-sm text-gray-500 hidden lg:table-cell">{m.note || '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
       )}
 

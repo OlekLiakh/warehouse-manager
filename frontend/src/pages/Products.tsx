@@ -5,6 +5,12 @@ import type { Product } from '../types'
 import { filterProducts } from '../utils/search'
 import { fetchPaginated } from '../utils/fetch-paginated'
 
+interface SubtypeCounts {
+  DNIPRO: number
+  PICKUP: number
+  NOVA_POSHTA: number
+}
+
 export default function Products() {
   const navigate = useNavigate()
   const [products, setProducts] = useState<Product[]>([])
@@ -12,7 +18,7 @@ export default function Products() {
   const [showInactive, setShowInactive] = useState(false)
   const [loading, setLoading] = useState(true)
   const [dropdownOpen, setDropdownOpen] = useState(false)
-  const [todayMovements, setTodayMovements] = useState(0)
+  const [todayOrders, setTodayOrders] = useState<SubtypeCounts>({ DNIPRO: 0, PICKUP: 0, NOVA_POSHTA: 0 })
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   async function fetchProducts() {
@@ -24,20 +30,19 @@ export default function Products() {
     setLoading(false)
   }
 
-  async function fetchTodayMovements() {
-    const d = new Date()
-    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-    const start = `${today}T00:00:00`
-    const end = `${today}T23:59:59.999`
-    const { count } = await supabase
-      .from('stock_movements')
-      .select('*', { count: 'exact', head: true })
-      .gte('created_at', new Date(start).toISOString())
-      .lte('created_at', new Date(end).toISOString())
-    setTodayMovements(count ?? 0)
+  async function fetchTodayOrders() {
+    const today = new Date().toISOString().split('T')[0]
+    const { data } = await supabase
+      .from('orders')
+      .select('subtype')
+      .gte('created_at', `${today}T00:00:00`)
+    const dnipro = data?.filter(o => o.subtype === 'DNIPRO').length ?? 0
+    const pickup = data?.filter(o => o.subtype === 'PICKUP').length ?? 0
+    const nova = data?.filter(o => o.subtype === 'NOVA_POSHTA').length ?? 0
+    setTodayOrders({ DNIPRO: dnipro, PICKUP: pickup, NOVA_POSHTA: nova })
   }
 
-  useEffect(() => { fetchProducts(); fetchTodayMovements() }, [])
+  useEffect(() => { fetchProducts(); fetchTodayOrders() }, [])
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -52,7 +57,8 @@ export default function Products() {
 
   const activeProducts = products.filter(p => p.is_active)
   const filtered = filterProducts(products, search).filter(p => showInactive || p.is_active)
-  const zeroStock = activeProducts.filter(p => p.current_stock === 0).length
+  const inStock = activeProducts.filter(p => p.current_stock > 0).length
+  const totalOrders = todayOrders.DNIPRO + todayOrders.PICKUP + todayOrders.NOVA_POSHTA
 
   return (
     <div className="overflow-x-hidden">
@@ -76,7 +82,7 @@ export default function Products() {
               <div className="absolute right-0 mt-1 w-48 bg-white rounded-xl shadow-lg border border-gray-200 py-1 z-20">
                 <button onClick={() => { navigate('/invoice/new?type=IN'); setDropdownOpen(false) }}
                   className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                  📦 Прихідна
+                  📦 Прибуткова
                 </button>
                 <button onClick={() => { navigate('/invoice/new?type=OUT'); setDropdownOpen(false) }}
                   className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
@@ -95,12 +101,38 @@ export default function Products() {
           <div className="text-xs text-gray-500 mt-0.5">Товарів</div>
         </div>
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 px-4 py-3 text-center">
-          <div className="text-2xl font-bold text-[#e02424]">{zeroStock}</div>
-          <div className="text-xs text-gray-500 mt-0.5">Нульових</div>
+          <div className="text-2xl font-bold text-[#057a55]">{inStock}</div>
+          <div className="text-xs text-gray-500 mt-0.5">У наявності</div>
         </div>
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 px-4 py-3 text-center">
-          <div className="text-2xl font-bold text-[#1a56db]">{todayMovements}</div>
-          <div className="text-xs text-gray-500 mt-0.5">Рухів сьогодні</div>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 px-3 py-3 text-center">
+          <div className="text-xs text-gray-500 mb-1">Сьогодні</div>
+          {totalOrders === 0 ? (
+            <div className="text-xs text-gray-400">Замовлень немає</div>
+          ) : (
+            <div className="flex items-end justify-center gap-3">
+              {todayOrders.DNIPRO > 0 && (
+                <div className="text-center">
+                  <div className="text-xl font-bold text-gray-900">{todayOrders.DNIPRO}</div>
+                  <div className="text-sm">🚚</div>
+                  <div className="text-[10px] text-gray-500 leading-tight">Дніпро</div>
+                </div>
+              )}
+              {todayOrders.PICKUP > 0 && (
+                <div className="text-center">
+                  <div className="text-xl font-bold text-gray-900">{todayOrders.PICKUP}</div>
+                  <div className="text-sm">🧍</div>
+                  <div className="text-[10px] text-gray-500 leading-tight">Самов.</div>
+                </div>
+              )}
+              {todayOrders.NOVA_POSHTA > 0 && (
+                <div className="text-center">
+                  <div className="text-xl font-bold text-gray-900">{todayOrders.NOVA_POSHTA}</div>
+                  <div className="text-sm">📮</div>
+                  <div className="text-[10px] text-gray-500 leading-tight">НП</div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
